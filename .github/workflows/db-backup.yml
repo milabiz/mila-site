@@ -1,0 +1,31 @@
+name: Weekly DB Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * 0' # Every Sunday at 2 AM UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Export contact submissions
+        run: |
+          mkdir -p backups
+          TIMESTAMP=$(date +%Y-%m-%d)
+          curl -s \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/contact_submissions?select=*&name=neq.HEALTH_CHECK&order=created_at.desc" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            > "backups/contact_submissions_${TIMESTAMP}.json"
+          echo "Exported $(cat "backups/contact_submissions_${TIMESTAMP}.json" | python3 -c 'import sys, json; print(len(json.load(sys.stdin)))') records"
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 90

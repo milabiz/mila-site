@@ -1,0 +1,40 @@
+---
+// Only renders during local development
+---
+
+{import.meta.env.DEV && (
+  <div class="dev-debug">
+    <span class="dev-debug__breakpoint">
+      <span class="show-sm">SM</span>
+      <span class="show-md">MD</span>
+      <span class="show-lg">LG</span>
+    </span>
+    <a href={`${import.meta.env.PUBLIC_SUPABASE_URL ?? '#'}`} target="_blank" rel="noopener">
+      Supabase
+    </a>
+  </div>
+)}
+
+<style>
+  .dev-debug {
+    position: fixed;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #0f0;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    z-index: 9999;
+    display: flex;
+    gap: 8px;
+  }
+  .dev-debug a {
+    color: #0ff;
+  }
+  .show-sm, .show-md, .show-lg { display: none; }
+  @media (max-width: 600px) { .show-sm { display: inline; } }
+  @media (min-width: 601px) and (max-width: 1024px) { .show-md { display: inline; } }
+  @media (min-width: 1025px) { .show-lg { display: inline; } }
+</style>

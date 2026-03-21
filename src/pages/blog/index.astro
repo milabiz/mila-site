@@ -1,0 +1,36 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+const allPosts = await getCollection('blog', ({ data }) => {
+  // Show drafts only in dev mode
+  return import.meta.env.DEV || !data.draft;
+});
+
+const posts = allPosts.sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+);
+---
+
+<BaseLayout title="Blog - Mila Business Solutions LLC" description="Database tips, development insights, and case studies from Mila Business Solutions LLC.">
+  <section>
+    <h2>Blog</h2>
+    {posts.length === 0 ? (
+      <p>No posts yet. Check back soon!</p>
+    ) : (
+      <ul class="blog-list">
+        {posts.map((post) => (
+          <li>
+            <a href={`/blog/${post.id}/`}>{post.data.title}</a>
+            {post.data.draft && <span style="color: orange; font-size: 0.8rem;"> (DRAFT)</span>}
+            <br />
+            <time datetime={post.data.pubDate.toISOString()}>
+              {post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </time>
+            <p>{post.data.description}</p>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+</BaseLayout>

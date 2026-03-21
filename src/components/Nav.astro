@@ -1,0 +1,23 @@
+---
+const currentPath = Astro.url.pathname;
+
+const links = [
+  { href: '/', label: 'Home' },
+  { href: '/about/', label: 'About' },
+  { href: '/services/', label: 'Services' },
+  { href: '/blog/', label: 'Blog' },
+  { href: '/contact/', label: 'Contact' },
+];
+---
+
+<nav>
+  <ul>
+    {links.map(({ href, label }) => (
+      <li>
+        <a href={href} class:list={[{ active: currentPath === href }]}>
+          {label}
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>

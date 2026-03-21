@@ -1,0 +1,50 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Nav from '../components/Nav.astro';
+import DevDebug from '../components/DevDebug.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  image?: string;
+}
+
+const { title, description, image } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <BaseHead title={title} description={description} image={image} />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a href="/">
+      <img src="/logo.svg" alt="Mila Business Solutions LLC" class="header-logo" />
+      <div class="header-text">
+        <span class="header-title">Mila Business Solutions</span>
+        <span class="header-tagline">Database &amp; Development Consulting</span>
+      </div>
+    </a>
+  </header>
+
+  <Nav />
+
+  <main>
+    <slot />
+  </main>
+
+  <footer>
+    <p>&copy; {new Date().getFullYear()} Mila Business Solutions LLC. All rights reserved.</p>
+  </footer>
+
+  <DevDebug />
+</body>
+</html>

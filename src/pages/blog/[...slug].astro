@@ -1,0 +1,45 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => {
+    return import.meta.env.DEV || !data.draft;
+  });
+
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<BaseLayout title={`${post.data.title} - Mila Business Solutions LLC`} description={post.data.description} image={post.data.image}>
+  <article class="blog-post">
+    <h2>{post.data.title}</h2>
+    <time datetime={post.data.pubDate.toISOString()}>
+      {post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+    </time>
+    {post.data.updatedDate && (
+      <span style="color: #666; font-size: 0.875rem; margin-left: 1rem;">
+        (Updated: {post.data.updatedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })})
+      </span>
+    )}
+
+    {post.data.tags.length > 0 && (
+      <div class="tags">
+        {post.data.tags.map((tag) => (
+          <span class="tag">{tag}</span>
+        ))}
+      </div>
+    )}
+
+    <Content />
+
+    <hr />
+    <p><a href="/blog/">&larr; Back to all posts</a></p>
+  </article>
+</BaseLayout>
