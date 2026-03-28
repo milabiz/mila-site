@@ -23,7 +23,7 @@
   "dependencies": {
     "@astrojs/rss": "^4.0.17",
     "@astrojs/sitemap": "^3.7.1",
-    "@astrojs/vercel": "^10.0.2",
+    "@astrojs/vercel": "^10.0.3",
     "@supabase/supabase-js": "^2.99.3",
     "astro": "^6.0.8"
   },
