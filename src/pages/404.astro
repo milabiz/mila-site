@@ -1,11 +1,28 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Section from '../components/Section.astro';
 ---
 
-<BaseLayout title="Page Not Found - Mila Business Solutions LLC">
-  <section class="error-page">
-    <h2>404</h2>
-    <p>The page you're looking for doesn't exist or has been moved.</p>
-    <a href="/" class="cta-link">Return Home</a>
-  </section>
+<BaseLayout title="Page not found — Mila Business Solutions LLC">
+  <Section narrow center>
+    <p class="eyebrow">404</p>
+    <h1 style="margin-top:var(--space-3);">That page doesn't exist</h1>
+    <p class="lead" style="margin-inline:auto; margin-top:var(--space-4);">
+      It may have moved, or the link may be wrong.
+    </p>
+    <div class="actions">
+      <a class="btn btn--primary" href="/">Back to home</a>
+      <a class="btn btn--secondary" href="/demo/">Try the SQL review</a>
+    </div>
+  </Section>
 </BaseLayout>
+
+<style>
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    justify-content: center;
+    margin-top: var(--space-7);
+  }
+</style>

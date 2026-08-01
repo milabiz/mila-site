@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import Section from '../../components/Section.astro';
 import { getCollection, render } from 'astro:content';
 
 export async function getStaticPaths() {
@@ -15,31 +16,154 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const { Content } = await render(post);
+
+const fmt = (date: Date) =>
+  date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 ---
 
-<BaseLayout title={`${post.data.title} - Mila Business Solutions LLC`} description={post.data.description} image={post.data.image}>
-  <article class="blog-post">
-    <h2>{post.data.title}</h2>
-    <time datetime={post.data.pubDate.toISOString()}>
-      {post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-    </time>
-    {post.data.updatedDate && (
-      <span style="color: #666; font-size: 0.875rem; margin-left: 1rem;">
-        (Updated: {post.data.updatedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })})
-      </span>
-    )}
+<BaseLayout
+  title={`${post.data.title} — Mila Business Solutions LLC`}
+  description={post.data.description}
+  image={post.data.image}
+>
+  <Section narrow>
+    <article class="post">
+      <header class="post__head">
+        <h1>{post.data.title}</h1>
+        <p class="post__meta">
+          <time datetime={post.data.pubDate.toISOString()}>
+            {fmt(post.data.pubDate)}
+          </time>
+          {
+            post.data.updatedDate && (
+              <span>&middot; updated {fmt(post.data.updatedDate)}</span>
+            )
+          }
+        </p>
+        {
+          post.data.tags.length > 0 && (
+            <div class="post__tags">
+              {post.data.tags.map((tag) => (
+                <span class="badge badge--accent">{tag}</span>
+              ))}
+            </div>
+          )
+        }
+      </header>
 
-    {post.data.tags.length > 0 && (
-      <div class="tags">
-        {post.data.tags.map((tag) => (
-          <span class="tag">{tag}</span>
-        ))}
+      <div class="prose">
+        <Content />
       </div>
-    )}
 
-    <Content />
-
-    <hr />
-    <p><a href="/blog/">&larr; Back to all posts</a></p>
-  </article>
+      <footer class="post__foot">
+        <a href="/blog/">&larr; All posts</a>
+      </footer>
+    </article>
+  </Section>
 </BaseLayout>
+
+<style>
+  .post__head {
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: var(--space-7);
+  }
+
+  .post__meta {
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--c-fg-subtle);
+  }
+
+  .post__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  /* ---- Prose ---- */
+  .prose :global(h2) {
+    font-size: var(--text-2xl);
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-4);
+  }
+
+  .prose :global(h3) {
+    font-size: var(--text-lg);
+    margin-top: var(--space-6);
+    margin-bottom: var(--space-3);
+  }
+
+  .prose :global(p) {
+    margin-bottom: var(--space-4);
+    color: var(--c-fg-muted);
+  }
+
+  .prose :global(ul),
+  .prose :global(ol) {
+    margin: 0 0 var(--space-5) var(--space-5);
+    color: var(--c-fg-muted);
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .prose :global(strong) {
+    color: var(--c-fg);
+  }
+
+  .prose :global(blockquote) {
+    margin: var(--space-6) 0;
+    padding: var(--space-4) var(--space-5);
+    border-left: 3px solid var(--c-accent);
+    background: var(--c-accent-soft);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    color: var(--c-fg-muted);
+  }
+
+  .prose :global(blockquote p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .prose :global(pre) {
+    background: var(--c-code-bg);
+    color: var(--c-code-fg);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--c-border);
+    overflow-x: auto;
+    margin: var(--space-5) 0;
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+
+  .prose :global(pre code) {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+  }
+
+  .prose :global(img) {
+    border-radius: var(--radius-md);
+    margin: var(--space-5) 0;
+  }
+
+  .prose :global(hr) {
+    border: none;
+    border-top: 1px solid var(--c-border);
+    margin: var(--space-7) 0;
+  }
+
+  .post__foot {
+    margin-top: var(--space-8);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--c-border);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+</style>

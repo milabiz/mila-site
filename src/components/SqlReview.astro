@@ -1,0 +1,682 @@
+---
+import { DIALECTS, DIALECT_LABELS, MAX_SQL_CHARS } from '../lib/review-schema';
+
+interface Props {
+  /** Compact framing when embedded on the home page. */
+  compact?: boolean;
+}
+
+const { compact = false } = Astro.props;
+
+/**
+ * Prefilled so a visitor gets a full result in one click, typing nothing.
+ * Deliberately bad: leading-wildcard LIKE, a function wrapping an indexed
+ * column, a correlated subquery in the predicate, and SELECT *.
+ */
+const EXAMPLE_SQL = `SELECT *
+FROM Customers c
+JOIN Orders o ON o.CustomerId = c.CustomerId
+WHERE c.Name LIKE '%smith%'
+  AND YEAR(o.OrderDate) = 2025
+  AND (
+    SELECT SUM(oi.LineTotal)
+    FROM OrderItems oi
+    WHERE oi.OrderId = o.OrderId
+  ) > 500
+ORDER BY o.OrderDate DESC;`;
+
+const EXAMPLE_SCHEMA = `CREATE TABLE dbo.Orders (
+  OrderId    INT IDENTITY PRIMARY KEY,
+  CustomerId INT NOT NULL,
+  OrderDate  DATETIME2 NOT NULL,
+  Status     TINYINT NOT NULL,
+  Total      DECIMAL(12,2) NOT NULL
+);
+
+CREATE INDEX IX_Orders_CustomerId ON dbo.Orders (CustomerId);`;
+---
+
+{/*
+  Example text rides on data attributes rather than <template> elements.
+  <template> is not a void element: a self-closing `<template ... />` does not
+  close, and every following sibling — including <style> and <script> — gets
+  parsed as its content, silently killing the component's JavaScript.
+*/}
+<div
+  class="review"
+  data-review
+  data-compact={compact ? 'true' : null}
+  data-example-sql={EXAMPLE_SQL}
+  data-example-schema={EXAMPLE_SCHEMA}
+>
+  <form class="review__form" data-review-form novalidate>
+    <div class="review__controls">
+      <div class="field review__field-dialect">
+        <label for="review-dialect">Database</label>
+        <select id="review-dialect" name="dialect">
+          {
+            DIALECTS.map((d) => (
+              <option value={d} selected={d === 'tsql'}>
+                {DIALECT_LABELS[d]}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+
+      <button type="button" class="btn btn--secondary" data-load-example>
+        Try this example
+      </button>
+    </div>
+
+    <div class="field">
+      <label for="review-sql">Your query</label>
+      <textarea
+        id="review-sql"
+        name="sql"
+        rows={compact ? 9 : 13}
+        maxlength={MAX_SQL_CHARS}
+        spellcheck="false"
+        autocapitalize="off"
+        autocorrect="off"
+        aria-describedby="review-sql-hint"
+        set:text={EXAMPLE_SQL}
+      />
+      <p class="field__hint" id="review-sql-hint">
+        <span data-char-count>0</span>/{MAX_SQL_CHARS} characters. Paste your own,
+        or review the example above.
+      </p>
+    </div>
+
+    <details class="disclosure" data-schema-disclosure>
+      <summary>Add technical details (optional)</summary>
+      <div class="disclosure__body">
+        <p class="field__hint" style="margin-top:0;">
+          Table and index definitions make the review far more specific. Without
+          them the analysis can only cover problems visible in the query itself.
+        </p>
+        <label for="review-schema" class="visually-hidden">
+          Schema and index definitions
+        </label>
+        <textarea
+          id="review-schema"
+          name="schema"
+          rows="7"
+          maxlength={MAX_SQL_CHARS}
+          spellcheck="false"
+          placeholder="CREATE TABLE ... / CREATE INDEX ..."></textarea>
+        <button
+          type="button"
+          class="btn btn--ghost"
+          data-load-example-schema
+          style="margin-top:var(--space-3);"
+        >
+          Use the example schema
+        </button>
+      </div>
+    </details>
+
+    <div class="review__actions">
+      <button type="submit" class="btn btn--primary btn--lg" data-submit>
+        Review this query
+      </button>
+      <p class="review__privacy">
+        Your query is sent to an AI provider on a zero-retention route to
+        produce the review. We don't store it. Please redact anything
+        confidential &mdash; <a href="/privacy/">how this works</a>.
+      </p>
+    </div>
+  </form>
+
+  {/*
+    Short status element, NOT aria-live on the result panel. Marking the whole
+    panel live makes a screen reader read the entire analysis on arrival, often
+    twice as sections render. This announces completion; the user then
+    navigates the results themselves.
+  */}
+  <p class="review__status" role="status" data-status></p>
+
+  <div class="review__output" data-output hidden></div>
+</div>
+
+<style>
+  .review {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .review__form {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .review__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-3);
+  }
+
+  .review__field-dialect {
+    flex: 1 1 14rem;
+    min-width: 0;
+  }
+
+  .review__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .review__privacy {
+    flex: 1 1 20rem;
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--c-fg-subtle);
+    max-width: 44ch;
+  }
+
+  .review__status {
+    margin: 0;
+    min-height: 1.25rem;
+    font-size: var(--text-sm);
+    font-weight: 550;
+    color: var(--c-fg-muted);
+  }
+
+  .review__status:empty {
+    display: none;
+  }
+
+  .review__output[hidden] {
+    display: none;
+  }
+
+  /* ---- Result panel ---- */
+  .result {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .result__verdict {
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--c-accent-soft);
+    border: 1px solid var(--c-accent-line);
+  }
+
+  .result__verdict h3 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-3);
+  }
+
+  .result__verdict p {
+    color: var(--c-fg-muted);
+    margin: 0;
+  }
+
+  .result__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .result__issue {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--c-border);
+    border-left-width: 3px;
+    border-radius: var(--radius-md);
+    background: var(--c-bg-raised);
+  }
+
+  .result__issue[data-severity='high'] {
+    border-left-color: var(--c-danger);
+  }
+  .result__issue[data-severity='medium'] {
+    border-left-color: var(--c-warn);
+  }
+  .result__issue[data-severity='low'] {
+    border-left-color: var(--c-info);
+  }
+
+  .result__issue-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+
+  .result__issue h4 {
+    font-size: var(--text-base);
+    margin: 0;
+  }
+
+  .result__issue p {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--c-fg-muted);
+    max-width: none;
+  }
+
+  .result__block + .result__block {
+    margin-top: var(--space-5);
+  }
+
+  .result__block h4 {
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--c-fg-subtle);
+    margin-bottom: var(--space-3);
+  }
+
+  .result__disclaimer {
+    font-size: var(--text-xs);
+    color: var(--c-fg-subtle);
+    border-top: 1px solid var(--c-border);
+    padding-top: var(--space-4);
+    max-width: none;
+  }
+
+  /* ---- Loading skeleton ---- */
+  .skeleton {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    background: var(--c-bg-raised);
+  }
+
+  .skeleton__bar {
+    height: 0.7rem;
+    border-radius: var(--radius-full);
+    background: linear-gradient(
+      90deg,
+      var(--c-bg-inset) 25%,
+      var(--c-border) 37%,
+      var(--c-bg-inset) 63%
+    );
+    background-size: 400% 100%;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .skeleton__bar {
+      animation: shimmer 1.6s ease-in-out infinite;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+</style>
+
+<script>
+  import type { Review, Severity } from '../lib/review-schema';
+
+  const CLIENT_TIMEOUT_MS = 45_000;
+
+  const SEVERITY_TONE: Record<Severity, string> = {
+    high: 'badge--danger',
+    medium: 'badge--warn',
+    low: 'badge--info',
+  };
+
+  const PROGRESS_STEPS = [
+    'Parsing your query…',
+    'Checking for common performance traps…',
+    'Working out what an index would need to cover…',
+    'Writing up the review…',
+  ];
+
+  const ERROR_COPY: Record<string, string> = {
+    rate_limited:
+      'The review limit has been reached for now. This is a free public demo with a daily cap.',
+    busy: 'The service is briefly busy. Try again in a few seconds.',
+    unavailable:
+      'The review service is temporarily unavailable. Nothing was sent anywhere.',
+    upstream_failed:
+      'The analysis did not come back in time. Try again, or shorten the query.',
+    invalid_response:
+      'The response came back malformed, so it was discarded rather than shown to you.',
+    too_large: 'That query is too large for the demo. Try a single statement.',
+    bad_request: 'That query could not be read. Check it is a single statement.',
+    bad_origin: 'This request was blocked by the demo’s origin policy.',
+    no_ip: 'The request could not be identified for rate limiting.',
+  };
+
+  function el<K extends keyof HTMLElementTagNameMap>(
+    tag: K,
+    className?: string,
+    text?: string
+  ): HTMLElementTagNameMap[K] {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    // textContent, never innerHTML — everything below may be model output.
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function codeBlock(label: string, code: string): HTMLElement {
+    const wrap = el('div', 'code');
+
+    const head = el('div', 'code__head');
+    head.append(el('span', 'code__label', label));
+
+    const copy = el('button', 'code__copy', 'Copy');
+    copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(code);
+        copy.textContent = 'Copied';
+      } catch {
+        copy.textContent = 'Press Ctrl+C';
+      }
+      window.setTimeout(() => {
+        copy.textContent = 'Copy';
+      }, 1600);
+    });
+    head.append(copy);
+
+    const pre = el('pre');
+    // Scrollable region — must be keyboard reachable.
+    pre.tabIndex = 0;
+    pre.append(el('code', undefined, code));
+
+    wrap.append(head, pre);
+    return wrap;
+  }
+
+  function renderResult(
+    review: Review,
+    opts: { hadSchema: boolean; mocked: boolean }
+  ): HTMLElement {
+    const root = el('div', 'result');
+
+    // -- Verdict + plain-English summary, always first --------------------
+    const verdict = el('div', 'result__verdict');
+    verdict.append(el('h3', undefined, review.verdict));
+    verdict.append(el('p', undefined, review.plain_summary));
+    root.append(verdict);
+
+    const meta = el('div', 'result__meta');
+    const counts: Record<string, number> = { high: 0, medium: 0, low: 0 };
+    for (const issue of review.issues) counts[issue.severity]++;
+
+    for (const level of ['high', 'medium', 'low'] as Severity[]) {
+      if (counts[level] > 0) {
+        meta.append(
+          el(
+            'span',
+            `badge ${SEVERITY_TONE[level]}`,
+            `${counts[level]} ${level}`
+          )
+        );
+      }
+    }
+    if (review.issues.length === 0) {
+      meta.append(el('span', 'badge badge--ok', 'No significant issues found'));
+    }
+    if (opts.mocked) {
+      meta.append(el('span', 'badge badge--neutral', 'Preview — sample result'));
+    }
+    root.append(meta);
+
+    // -- Confidence note when no DDL was supplied -------------------------
+    if (!opts.hadSchema) {
+      root.append(
+        el(
+          'p',
+          'status status--info',
+          'Confidence limited — add table and index definitions above for specific feedback. Without them this review can only cover problems visible in the query itself.'
+        )
+      );
+    }
+
+    // -- Technical detail, collapsed ---------------------------------------
+    const hasDetail =
+      review.issues.length > 0 || review.indexes.length > 0 || review.rewrite;
+
+    if (hasDetail) {
+      const details = el('details', 'disclosure');
+      const summary = el(
+        'summary',
+        undefined,
+        'Show technical details'
+      ) as HTMLElement;
+      details.append(summary);
+
+      const body = el('div', 'disclosure__body');
+
+      if (review.issues.length > 0) {
+        const block = el('div', 'result__block');
+        block.append(el('h4', undefined, 'Findings'));
+        const list = el('div');
+        list.style.display = 'grid';
+        list.style.gap = 'var(--space-3)';
+
+        for (const issue of review.issues) {
+          const card = el('div', 'result__issue');
+          card.dataset.severity = issue.severity;
+
+          const head = el('div', 'result__issue-head');
+          head.append(el('h4', undefined, issue.title));
+          head.append(
+            el('span', `badge ${SEVERITY_TONE[issue.severity]}`, issue.severity)
+          );
+
+          card.append(head, el('p', undefined, issue.detail));
+          list.append(card);
+        }
+        block.append(list);
+        body.append(block);
+      }
+
+      if (review.indexes.length > 0) {
+        const block = el('div', 'result__block');
+        block.append(el('h4', undefined, 'Suggested indexes'));
+        for (const ddl of review.indexes) {
+          block.append(codeBlock('DDL', ddl));
+        }
+        body.append(block);
+      }
+
+      if (review.rewrite) {
+        const block = el('div', 'result__block');
+        block.append(el('h4', undefined, 'Suggested rewrite'));
+        block.append(codeBlock('SQL', review.rewrite));
+        body.append(block);
+      }
+
+      details.append(body);
+      root.append(details);
+    }
+
+    if (review.notes) {
+      root.append(el('p', 'result__disclaimer', review.notes));
+    }
+
+    root.append(
+      el(
+        'p',
+        'result__disclaimer',
+        'This is a review, not production advice. Always validate suggestions against your own execution plan before applying them.'
+      )
+    );
+
+    return root;
+  }
+
+  function renderSkeleton(): HTMLElement {
+    const wrap = el('div', 'skeleton');
+    for (const width of ['70%', '100%', '92%', '48%']) {
+      const bar = el('div', 'skeleton__bar');
+      bar.style.width = width;
+      wrap.append(bar);
+    }
+    return wrap;
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-review]').forEach((root) => {
+    const form = root.querySelector<HTMLFormElement>('[data-review-form]');
+    const output = root.querySelector<HTMLElement>('[data-output]');
+    const status = root.querySelector<HTMLElement>('[data-status]');
+    const submit = root.querySelector<HTMLButtonElement>('[data-submit]');
+    const sqlInput = root.querySelector<HTMLTextAreaElement>('#review-sql');
+    const schemaInput =
+      root.querySelector<HTMLTextAreaElement>('#review-schema');
+    const dialect = root.querySelector<HTMLSelectElement>('#review-dialect');
+    const charCount = root.querySelector<HTMLElement>('[data-char-count]');
+    const disclosure = root.querySelector<HTMLDetailsElement>(
+      '[data-schema-disclosure]'
+    );
+
+    if (!form || !output || !status || !submit || !sqlInput || !dialect) return;
+
+    const exampleSql = root.dataset.exampleSql ?? '';
+    const exampleSchema = root.dataset.exampleSchema ?? '';
+
+    const updateCount = () => {
+      if (charCount) charCount.textContent = String(sqlInput.value.length);
+    };
+    sqlInput.addEventListener('input', updateCount);
+    updateCount();
+
+    root
+      .querySelector('[data-load-example]')
+      ?.addEventListener('click', () => {
+        sqlInput.value = exampleSql;
+        updateCount();
+        sqlInput.focus();
+      });
+
+    root
+      .querySelector('[data-load-example-schema]')
+      ?.addEventListener('click', () => {
+        if (schemaInput) {
+          schemaInput.value = exampleSchema;
+          schemaInput.focus();
+        }
+      });
+
+    let inFlight = false;
+    let progressTimer: number | undefined;
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (inFlight) return;
+
+      const sql = sqlInput.value.trim();
+      if (!sql) {
+        status.textContent = 'Enter a query first.';
+        sqlInput.focus();
+        return;
+      }
+
+      const schema = schemaInput?.value.trim() ?? '';
+      const hadSchema = schema.length > 0;
+
+      inFlight = true;
+      submit.disabled = true;
+      submit.textContent = 'Reviewing…';
+      output.hidden = false;
+      output.replaceChildren(renderSkeleton());
+
+      let step = 0;
+      status.textContent = PROGRESS_STEPS[0];
+      progressTimer = window.setInterval(() => {
+        step = Math.min(step + 1, PROGRESS_STEPS.length - 1);
+        status.textContent = PROGRESS_STEPS[step];
+      }, 3500);
+
+      const controller = new AbortController();
+      const abortTimer = window.setTimeout(
+        () => controller.abort(),
+        CLIENT_TIMEOUT_MS
+      );
+
+      try {
+        const response = await fetch('/api/review-sql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            sql,
+            dialect: dialect.value,
+            ...(hadSchema ? { schema } : {}),
+          }),
+        });
+
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          const code = payload?.error ?? 'unavailable';
+          let message = ERROR_COPY[code] ?? ERROR_COPY.unavailable;
+
+          if (response.status === 429) {
+            const retry = Number(response.headers.get('retry-after'));
+            if (Number.isFinite(retry) && retry > 0) {
+              const mins = Math.ceil(retry / 60);
+              message += ` Try again in about ${
+                mins >= 60 ? `${Math.ceil(mins / 60)} hour(s)` : `${mins} minute(s)`
+              }.`;
+            }
+          }
+
+          status.textContent =
+            response.status === 429 ? 'Limit reached' : 'Request failed';
+          output.replaceChildren(el('p', 'status status--error', message));
+          return;
+        }
+
+        if (!payload?.review) {
+          status.textContent = 'Request failed';
+          output.replaceChildren(
+            el('p', 'status status--error', ERROR_COPY.invalid_response)
+          );
+          return;
+        }
+
+        status.textContent = 'Review ready';
+        output.replaceChildren(
+          renderResult(payload.review as Review, {
+            hadSchema,
+            mocked: Boolean(payload.mocked),
+          })
+        );
+      } catch (error) {
+        const aborted = error instanceof DOMException && error.name === 'AbortError';
+        status.textContent = 'Request failed';
+        output.replaceChildren(
+          el(
+            'p',
+            'status status--error',
+            aborted
+              ? 'That took too long and was cancelled. Try a shorter query.'
+              : 'Could not reach the review service. Check your connection and try again.'
+          )
+        );
+      } finally {
+        window.clearTimeout(abortTimer);
+        if (progressTimer) window.clearInterval(progressTimer);
+        inFlight = false;
+        submit.disabled = false;
+        submit.textContent = 'Review this query';
+      }
+    });
+
+    // Opening the disclosure is a strong signal the visitor wants specificity.
+    disclosure?.addEventListener('toggle', () => {
+      if (disclosure.open) schemaInput?.focus();
+    });
+  });
+</script>

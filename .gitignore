@@ -3,3 +3,7 @@ dist/
 .astro/
 .env
 .vercel/
+
+# Test artifacts
+test-results/
+playwright-report/

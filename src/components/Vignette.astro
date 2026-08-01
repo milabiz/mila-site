@@ -1,0 +1,195 @@
+---
+interface Props {
+  id: string;
+  title: string;
+  /** The problem in the visitor's own words. */
+  problem: string;
+  beforeLabel?: string;
+  afterLabel?: string;
+  /** Service line this maps to, shown as a footer link. */
+  service?: string;
+}
+
+const {
+  id,
+  title,
+  problem,
+  beforeLabel = 'Before',
+  afterLabel = 'After',
+  service,
+} = Astro.props;
+---
+
+<article class="vignette" id={id} data-vignette>
+  <header class="vignette__head">
+    <div>
+      <h3>{title}</h3>
+      <p class="vignette__problem">{problem}</p>
+    </div>
+    <span class="badge badge--neutral vignette__tag">Illustrative example</span>
+  </header>
+
+  {/*
+    Radio inputs, not buttons: the toggle works with zero JavaScript, is
+    keyboard-operable by default, and screen readers announce it as a group.
+  */}
+  <div class="vignette__toggle" role="group" aria-label={`${title} — before and after`}>
+    <input
+      type="radio"
+      name={`${id}-state`}
+      id={`${id}-before`}
+      class="visually-hidden"
+      checked
+    />
+    <label for={`${id}-before`}>{beforeLabel}</label>
+
+    <input
+      type="radio"
+      name={`${id}-state`}
+      id={`${id}-after`}
+      class="visually-hidden"
+    />
+    <label for={`${id}-after`}>{afterLabel}</label>
+  </div>
+
+  <div class="vignette__panels">
+    <div class="vignette__panel vignette__panel--before">
+      <slot name="before" />
+    </div>
+    <div class="vignette__panel vignette__panel--after">
+      <slot name="after" />
+    </div>
+  </div>
+
+  {
+    service && (
+      <footer class="vignette__foot">
+        <span class="muted">This is</span> <strong>{service}</strong>
+        <a href="/contact/">Talk to us about something similar &rarr;</a>
+      </footer>
+    )
+  }
+</article>
+
+<style>
+  .vignette {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    background: var(--c-bg-raised);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-sm);
+    scroll-margin-top: 7rem;
+    /* Grid and flex items default to min-width:auto, so a wide descendant
+       (the nowrap run log, the min-width table) stretches the track and
+       overflows the page instead of scrolling inside its own container. */
+    min-width: 0;
+  }
+
+  .vignette__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-4);
+  }
+
+  .vignette__head h3 {
+    font-size: var(--text-xl);
+  }
+
+  .vignette__problem {
+    margin-top: var(--space-2);
+    color: var(--c-fg-muted);
+    font-size: var(--text-sm);
+  }
+
+  .vignette__tag {
+    flex: none;
+  }
+
+  /* Segmented control */
+  .vignette__toggle {
+    display: inline-flex;
+    padding: 3px;
+    gap: 3px;
+    background: var(--c-bg-inset);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-full);
+    margin-bottom: var(--space-4);
+  }
+
+  .vignette__toggle label {
+    margin: 0;
+    padding: 0.35rem 1.1rem;
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--c-fg-muted);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--dur-fast) var(--ease),
+      color var(--dur-fast) var(--ease);
+  }
+
+  .vignette__toggle label:hover {
+    color: var(--c-fg);
+  }
+
+  .vignette__toggle input:checked + label {
+    background: var(--c-bg-raised);
+    color: var(--c-fg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Keyboard focus has to be visible even though the input is off-screen */
+  .vignette__toggle input:focus-visible + label {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 2px;
+  }
+
+  .vignette__panels {
+    position: relative;
+    min-width: 0;
+  }
+
+  .vignette__panel {
+    display: none;
+    min-width: 0;
+  }
+
+  /* Sibling-order selectors: before-input is 1st, after-input is 3rd */
+  .vignette__toggle:has(input:first-of-type:checked) ~ .vignette__panels .vignette__panel--before,
+  .vignette__toggle:has(input:last-of-type:checked) ~ .vignette__panels .vignette__panel--after {
+    display: block;
+  }
+
+  /* Fallback for browsers without :has() — show the before panel */
+  @supports not selector(:has(*)) {
+    .vignette__panel--before {
+      display: block;
+    }
+  }
+
+  .vignette__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--c-border);
+    font-size: var(--text-sm);
+  }
+
+  .vignette__foot a {
+    margin-left: auto;
+    font-weight: 600;
+  }
+
+  @media (max-width: 560px) {
+    .vignette__foot a {
+      margin-left: 0;
+    }
+  }
+</style>

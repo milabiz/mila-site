@@ -1,36 +1,118 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import Section from '../../components/Section.astro';
 import { getCollection } from 'astro:content';
 
 const allPosts = await getCollection('blog', ({ data }) => {
-  // Show drafts only in dev mode
+  // Drafts are visible in dev only.
   return import.meta.env.DEV || !data.draft;
 });
 
 const posts = allPosts.sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
+
+const fmt = (date: Date) =>
+  date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 ---
 
-<BaseLayout title="Blog - Mila Business Solutions LLC" description="Database tips, development insights, and case studies from Mila Business Solutions LLC.">
-  <section>
-    <h2>Blog</h2>
-    {posts.length === 0 ? (
-      <p>No posts yet. Check back soon!</p>
-    ) : (
-      <ul class="blog-list">
-        {posts.map((post) => (
-          <li>
-            <a href={`/blog/${post.id}/`}>{post.data.title}</a>
-            {post.data.draft && <span style="color: orange; font-size: 0.8rem;"> (DRAFT)</span>}
-            <br />
-            <time datetime={post.data.pubDate.toISOString()}>
-              {post.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </time>
-            <p>{post.data.description}</p>
-          </li>
-        ))}
-      </ul>
-    )}
-  </section>
+<BaseLayout
+  title="Blog — Mila Business Solutions LLC"
+  description="Notes on database engineering, AI automation, and the unglamorous work that makes both hold up."
+>
+  <Section narrow>
+    <div class="reveal">
+      <p class="eyebrow">Blog</p>
+      <h1 style="margin-top:var(--space-3);">Notes from the work</h1>
+      <p class="lead" style="margin-top:var(--space-4);">
+        Occasional writing on data engineering, automation, and the parts of
+        both that only show up in production.
+      </p>
+    </div>
+  </Section>
+
+  <Section narrow tight>
+    {
+      posts.length === 0 ? (
+        <p class="muted">Nothing published yet.</p>
+      ) : (
+        <ul class="posts">
+          {posts.map((post) => (
+            <li class="post reveal">
+              <a href={`/blog/${post.id}/`} class="post__link">
+                <h2 class="post__title">
+                  {post.data.title}
+                  {post.data.draft && (
+                    <span class="badge badge--warn" style="margin-left:var(--space-3);">
+                      Draft
+                    </span>
+                  )}
+                </h2>
+                <time datetime={post.data.pubDate.toISOString()} class="post__date">
+                  {fmt(post.data.pubDate)}
+                </time>
+                <p class="post__desc">{post.data.description}</p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </Section>
 </BaseLayout>
+
+<style>
+  .posts {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .post__link {
+    display: block;
+    padding: var(--space-5);
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease);
+  }
+
+  .post__link:hover {
+    color: inherit;
+    background: var(--c-bg-raised);
+    border-color: var(--c-border);
+  }
+
+  .post__title {
+    font-size: var(--text-xl);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .post__link:hover .post__title {
+    color: var(--c-accent);
+  }
+
+  .post__date {
+    display: block;
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--c-fg-subtle);
+    letter-spacing: 0.03em;
+  }
+
+  .post__desc {
+    margin-top: var(--space-3);
+    color: var(--c-fg-muted);
+    font-size: var(--text-sm);
+  }
+</style>

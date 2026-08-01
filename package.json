@@ -6,7 +6,10 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "repository": {
     "type": "git",
@@ -25,9 +28,15 @@
     "@astrojs/sitemap": "^3.7.1",
     "@astrojs/vercel": "^10.0.2",
     "@supabase/supabase-js": "^2.99.3",
-    "astro": "^6.0.8"
+    "astro": "^6.0.8",
+    "ipaddr.js": "^2.4.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2"
+    "@astrojs/check": "^0.9.10",
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.58.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   }
 }

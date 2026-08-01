@@ -1,0 +1,61 @@
+---
+interface Props {
+  /** Renders on the sunken background with hairline rules above and below. */
+  sunken?: boolean;
+  /** Reduced vertical padding. */
+  tight?: boolean;
+  /** Constrain the inner container to reading width. */
+  narrow?: boolean;
+  id?: string;
+  title?: string;
+  eyebrow?: string;
+  lead?: string;
+  /** Center the heading block. */
+  center?: boolean;
+  class?: string;
+}
+
+const {
+  sunken = false,
+  tight = false,
+  narrow = false,
+  id,
+  title,
+  eyebrow,
+  lead,
+  center = false,
+  class: className = '',
+} = Astro.props;
+
+const hasHead = Boolean(title || eyebrow || lead);
+---
+
+<section
+  id={id}
+  class:list={[
+    'section',
+    sunken && 'section--sunken',
+    tight && 'section--tight',
+    className,
+  ]}
+>
+  <div class:list={['container', narrow && 'container--narrow']}>
+    {
+      hasHead && (
+        <div
+          class="section__head reveal"
+          style={center ? 'text-align:center;' : undefined}
+        >
+          {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+          {title && <h2 style={eyebrow ? 'margin-top:var(--space-3);' : undefined}>{title}</h2>}
+          {lead && (
+            <p class="lead" style={center ? 'margin-inline:auto;' : undefined}>
+              {lead}
+            </p>
+          )}
+        </div>
+      )
+    }
+    <slot />
+  </div>
+</section>
