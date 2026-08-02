@@ -100,7 +100,7 @@ test.describe('no-JavaScript fallback', () => {
 });
 
 test.describe('accessibility smoke', () => {
-  for (const path of ['/', '/demo/']) {
+  for (const path of ['/', '/demo/', '/play/']) {
     for (const colorScheme of ['light', 'dark'] as const) {
       test(`${path} has no serious or critical axe violations (${colorScheme})`, async ({
         page,

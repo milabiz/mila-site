@@ -6,6 +6,7 @@ const pages = [
   { name: 'Services', path: '/services/' },
   { name: 'Demo', path: '/demo/' },
   { name: 'Blog', path: '/blog/' },
+  { name: 'Play', path: '/play/' },
   { name: 'Privacy', path: '/privacy/' },
   { name: 'Contact', path: '/contact/' },
 ];
