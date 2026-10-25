@@ -1,0 +1,140 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Section from '../components/Section.astro';
+
+const updated = 'August 2026';
+---
+
+<BaseLayout
+  title="Privacy — Mila Business Solutions LLC"
+  description="What happens to a query you paste into the SQL Performance Review, what we store, and what we don't."
+>
+  <Section narrow>
+    <div class="reveal">
+      <p class="eyebrow">Privacy</p>
+      <h1 style="margin-top:var(--space-3);">What happens to what you paste</h1>
+      <p class="lead" style="margin-top:var(--space-4);">
+        The SQL Performance Review asks strangers to paste potentially sensitive
+        business data into a text box. That deserves a straight answer rather
+        than a policy nobody reads. Last updated {updated}.
+      </p>
+    </div>
+  </Section>
+
+  <Section narrow tight>
+    <div class="prose">
+      <h2>The short version</h2>
+      <p>
+        Your query is sent to an AI provider to produce the review, and is not
+        stored by us. The provider route is configured to retain nothing. We
+        keep a one-way hash of your IP address for 48 hours purely to enforce
+        rate limits. Please still redact anything genuinely confidential —
+        the safest data is the data you never send.
+      </p>
+
+      <h2>The SQL Performance Review</h2>
+
+      <h3>What gets sent</h3>
+      <p>
+        Exactly what you put in the two boxes: the query, and the schema/index
+        definitions if you supply them. Plus which database dialect you picked.
+        Nothing else — no cookies, no account, no browsing history.
+      </p>
+      <p>
+        Bear in mind what a query can carry: table and column names, database
+        and schema names, and any literal values in a <code>WHERE</code> clause —
+        which can include customer names, email addresses, IDs, or dates.
+        <strong>Replace real literals with placeholders before pasting.</strong>
+        The review is just as accurate with <code>WHERE email = 'x@example.com'</code>
+        as with a real address.
+      </p>
+
+      <h3>Where it goes</h3>
+      <p>
+        The request is sent to <a href="https://openrouter.ai" rel="noopener">OpenRouter</a>,
+        which routes it to a model provider. Routing is constrained to providers
+        that support zero data retention and have training/data collection
+        denied. If no provider currently meets those conditions, the request is
+        refused rather than quietly routed somewhere weaker — you'll see an
+        error instead of a review.
+      </p>
+
+      <h3>What we store</h3>
+      <p>
+        Of the review itself: nothing. The query, the schema, and the generated
+        response are not written to any database or log. They exist only for the
+        seconds it takes to produce your result.
+      </p>
+      <p>
+        We do store one thing: a <strong>keyed hash of your IP address</strong>
+        with a timestamp, so the free demo can enforce its per-visitor and daily
+        limits. The hash is one-way and computed with a secret key, so the
+        original address cannot be recovered from it. These rows are deleted
+        automatically after 48 hours.
+      </p>
+
+      <h3>What we log</h3>
+      <p>
+        Error logs record that a failure happened and its category. They do not
+        record your query, your schema, request bodies, or request headers.
+      </p>
+
+      <h2>The contact form</h2>
+      <p>
+        Whatever you type into it — typically a name, an email address, and a
+        description of your problem — is stored in our database so we can reply.
+        It isn't sold, shared, or used for marketing lists. Ask us and we'll
+        delete it.
+      </p>
+
+      <h2>Analytics and cookies</h2>
+      <p>
+        This site sets no tracking cookies and runs no third-party analytics.
+        The only thing stored in your browser is your light/dark theme
+        preference, which never leaves your device.
+      </p>
+
+      <h2>Questions or deletion requests</h2>
+      <p>
+        Email <a href="mailto:admin@milabiz.com">admin@milabiz.com</a>, or use
+        the <a href="/contact/">contact form</a>. If you'd like the contact
+        record deleted, say so and it will be.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        If this changes materially — particularly anything about what is sent to
+        a third party or what is retained — the date at the top changes with it.
+      </p>
+    </div>
+  </Section>
+</BaseLayout>
+
+<style>
+  .prose h2 {
+    font-size: var(--text-2xl);
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  .prose h2:first-child {
+    margin-top: 0;
+  }
+
+  .prose h3 {
+    font-size: var(--text-lg);
+    margin-top: var(--space-6);
+    margin-bottom: var(--space-3);
+  }
+
+  .prose p {
+    margin-bottom: var(--space-4);
+    color: var(--c-fg-muted);
+  }
+
+  .prose strong {
+    color: var(--c-fg);
+  }
+</style>

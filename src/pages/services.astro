@@ -1,29 +1,191 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Section from '../components/Section.astro';
+
+const services = [
+  {
+    name: 'AI Automation & Agents',
+    summary:
+      'Workflows and scheduled agents that do recurring work without a person driving them.',
+    does: [
+      'Scheduled jobs that pull, reconcile, and report on their own',
+      'Agents that draft, summarise, classify, or triage a queue',
+      'Escalation paths so uncertain cases reach a human instead of being guessed',
+      'Monitoring and alerting so a silent failure does not go unnoticed for a week',
+    ],
+    fit: 'Best when a competent person is doing something repetitive and rule-shaped, and the real cost is their time rather than the task itself.',
+  },
+  {
+    name: 'AI on Your Own Data',
+    summary:
+      'Making information you already own queryable, instead of buried in documents and transcripts.',
+    does: [
+      'Structured extraction from invoices, contracts, forms, and reports',
+      'Retrieval over internal documents so answers cite a real source',
+      'Transcript and call analysis that produces rows, not paragraphs',
+      'Validation rules so extracted data is checked before it lands',
+    ],
+    fit: 'Best when the answer technically exists inside your business, but retrieving it means a person reading things.',
+  },
+  {
+    name: 'Data Platform Engineering',
+    summary:
+      'The foundation. Schema, queries, migrations, and reporting layers that hold up under real load.',
+    does: [
+      'Query and index optimisation on slow production workloads',
+      'Schema design and normalisation, including cleaning up what grew organically',
+      'Migrations between systems without a weekend of downtime',
+      'Reporting layers so analytics stop competing with operations',
+    ],
+    fit: 'Best when something is slow, fragile, or nobody is quite sure the numbers are right.',
+  },
+  {
+    name: 'Integration & Internal Tools',
+    summary:
+      'Connecting systems that were never designed to know about each other.',
+    does: [
+      'APIs and sync jobs between platforms with no native integration',
+      'Internal dashboards and admin tools built for one specific team',
+      'Custom applications where the off-the-shelf option almost fits',
+      'Read-only unified views that add nothing to replace and nothing to migrate',
+    ],
+    fit: 'Best when a routine question requires several logins and a manual reconciliation nobody fully trusts.',
+  },
+];
 ---
 
-<BaseLayout title="Services - Mila Business Solutions LLC" description="Database consulting, query optimization, custom development, and workflow automation from Mila Business Solutions LLC.">
-  <section>
-    <h2>Our Services</h2>
-    <ul class="services-list">
-      <li>
-        <strong>Database Consulting</strong>
-        Design, optimization, and migration for robust data systems using SQL and tools like SSMS.
-      </li>
-      <li>
-        <strong>Query &amp; Reporting</strong>
-        Custom SQL scripts, performance tuning, and automated reporting to save you time.
-      </li>
-      <li>
-        <strong>VS Code Development</strong>
-        Prototyping apps, automation scripts (e.g., PowerShell), or full-stack tweaks — leveraging VS Code for efficient coding.
-      </li>
-      <li>
-        <strong>Custom Workflows</strong>
-        Tailored solutions for data integration or dev tools, adaptable to your needs.
-      </li>
-    </ul>
-    <p>We offer flexible packages — hourly, project-based, or retainer.</p>
-    <a href="/contact/" class="cta-link">Let's Discuss What Fits</a>
-  </section>
+<BaseLayout
+  title="Services — Mila Business Solutions LLC"
+  description="AI automation, document intelligence, database engineering, and systems integration — built on data foundations solid enough to trust."
+>
+  <Section narrow>
+    <div class="reveal">
+      <p class="eyebrow">Services</p>
+      <h1 style="margin-top:var(--space-3);">Four things we do well</h1>
+      <p class="lead" style="margin-top:var(--space-4);">
+        Listed in the order clients usually ask for them — roughly the reverse
+        of the order they usually need them. AI automation is what gets
+        requested; the data foundation underneath decides whether it works.
+      </p>
+    </div>
+  </Section>
+
+  <Section tight>
+    <div class="services">
+      {
+        services.map((service, i) => (
+          <article class="service reveal">
+            <div class="service__index">{String(i + 1).padStart(2, '0')}</div>
+            <div class="service__body">
+              <h2>{service.name}</h2>
+              <p class="lead">{service.summary}</p>
+              <ul>
+                {service.does.map((item) => (
+                  <li>{item}</li>
+                ))}
+              </ul>
+              <p class="service__fit">
+                <strong>Good fit:</strong> {service.fit}
+              </p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </Section>
+
+  <Section sunken narrow title="How engagements run">
+    <div class="grid grid--3">
+      <div>
+        <h3>1. One real problem</h3>
+        <p class="muted">
+          We start with something specific and annoying, not a strategy
+          document. If we can't help, that becomes obvious quickly and cheaply.
+        </p>
+      </div>
+      <div>
+        <h3>2. Working software</h3>
+        <p class="muted">
+          You get something running against your actual data early. Slide decks
+          are not deliverables.
+        </p>
+      </div>
+      <div>
+        <h3>3. Handover or retainer</h3>
+        <p class="muted">
+          Documented and handed over, or kept running under a retainer. Your
+          call — it isn't a lock-in either way.
+        </p>
+      </div>
+    </div>
+
+    <p style="margin-top:var(--space-7);">
+      Hourly, fixed-scope by project, or monthly retainer.
+      <a href="/contact/">Tell us what's broken</a> and we'll say which fits —
+      including when the honest answer is that it isn't worth paying anyone to
+      fix.
+    </p>
+  </Section>
 </BaseLayout>
+
+<style>
+  .services {
+    display: grid;
+    gap: var(--space-8);
+  }
+
+  .service {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-5);
+    align-items: start;
+  }
+
+  .service__index {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--c-accent);
+    opacity: 0.5;
+    line-height: 1;
+    padding-top: 0.35rem;
+  }
+
+  .service__body h2 {
+    font-size: var(--text-2xl);
+  }
+
+  .service__body .lead {
+    margin-top: var(--space-3);
+  }
+
+  .service__body ul {
+    margin: var(--space-4) 0 0;
+    padding-left: var(--space-5);
+    display: grid;
+    gap: var(--space-2);
+    color: var(--c-fg-muted);
+    font-size: var(--text-sm);
+  }
+
+  .service__fit {
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--c-bg-inset);
+    border-left: 3px solid var(--c-accent);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-size: var(--text-sm);
+    color: var(--c-fg-muted);
+    max-width: none;
+  }
+
+  @media (max-width: 640px) {
+    .service {
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
+    }
+    .service__index {
+      padding-top: 0;
+    }
+  }
+</style>

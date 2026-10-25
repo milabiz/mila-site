@@ -1,0 +1,1180 @@
+---
+/**
+ * UPTIME DEFENDER — canvas arcade game.
+ *
+ * Ported from a standalone HTML file. Notable changes from the original:
+ *   - All motion is time-scaled (the original moved the player per-frame, so a
+ *     144Hz display moved 2.4x faster than 60Hz and skewed the high score)
+ *   - devicePixelRatio-aware backing store, so it isn't soft on high-DPI screens
+ *   - prefers-reduced-motion is actually honoured (the original detected it and
+ *     then never referenced the result)
+ *   - Glow is pre-rendered to sprites instead of per-entity shadowBlur
+ *   - Start and game-over are separate overlays, so dying no longer destroys
+ *     the controls legend
+ *   - Page scrolling is only captured while actively playing
+ *
+ * The playfield stays dark in both themes on purpose — it reads as a device
+ * screen set into the page. The surrounding chrome uses site tokens.
+ */
+interface Props {
+  /** Heading level for the in-component title. */
+  class?: string;
+}
+const { class: className = '' } = Astro.props;
+---
+
+<div class:list={['ud', className]} data-ud>
+  <div class="ud__shell">
+    <div class="ud__hud">
+      <span class="ud__hud-brand">UPTIME DEFENDER</span>
+      <span class="ud__hud-stat">
+        SCORE <b class="ud__score" data-ud-score>0</b>
+      </span>
+      <span class="ud__hud-stat">
+        SHIELD <b class="ud__shield" data-ud-shield>3/3</b>
+      </span>
+      <span class="ud__hud-stat ud__hud-hide-sm">
+        HI <b class="ud__hi" data-ud-hi>0</b>
+      </span>
+      <span class="ud__hud-stat ud__hud-hide-sm">
+        LVL <b class="ud__lvl" data-ud-level>1</b>
+      </span>
+    </div>
+
+    <div class="ud__stage">
+      <canvas
+        class="ud__canvas"
+        data-ud-canvas
+        role="img"
+        aria-label="Uptime Defender: an arcade game where you move a firewall bar to catch data packets and avoid fireballs."
+      >
+        Your browser doesn't support canvas, so this game can't run. Nothing
+        important is missing — it's a toy.
+      </canvas>
+
+      {/* Start screen — never destroyed, so the controls stay available. */}
+      <div class="ud__overlay" data-ud-start>
+        <h3 class="ud__title">UPTIME<br />DEFENDER</h3>
+        <p class="ud__blurb">
+          You're the firewall. Catch <b class="ud__c-data">data packets</b> for
+          points, dodge the <b class="ud__c-fire">fireballs</b>. Grab
+          <b class="ud__c-gold">gold cores</b> for double score or
+          <b class="ud__c-wide">wideners</b> to lengthen your bar.
+        </p>
+        <p class="ud__keys">
+          <kbd>&larr;</kbd><kbd>&rarr;</kbd> or move the mouse &middot; hold
+          <kbd>click</kbd> to narrow the bar &middot; <kbd>Space</kbd> to
+          start or pause
+        </p>
+        <button type="button" class="btn btn--primary" data-ud-start-btn>
+          ▶ Start game
+        </button>
+      </div>
+
+      {/* Game over — separate element, toggled, never rebuilt from scratch. */}
+      <div class="ud__overlay is-hidden" data-ud-over>
+        <h3 class="ud__title" data-ud-over-title>SYSTEM COMPROMISED</h3>
+        <p class="ud__blurb" data-ud-over-detail></p>
+        <button type="button" class="btn btn--primary" data-ud-again-btn>
+          ↻ Play again
+        </button>
+        <p class="ud__keys"><kbd>Space</kbd> to restart</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="ud__tip" role="status" data-ud-tip>
+    Hint: gold cores double your score, wideners lengthen the bar, and holding
+    click narrows it for tight gaps.
+  </p>
+</div>
+
+<style>
+  .ud {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  /* Chrome follows the site theme; the playfield deliberately does not. */
+  .ud__shell {
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: #05070d;
+    box-shadow: var(--shadow-md);
+  }
+
+  .ud__hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+    background: rgba(5, 9, 18, 0.9);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+  }
+
+  .ud__hud-brand {
+    font-weight: 700;
+    color: #cbd5e1;
+  }
+
+  .ud__hud-stat b {
+    font-size: var(--text-sm);
+    margin-left: 0.35rem;
+  }
+
+  .ud__score {
+    color: #22d3ee;
+  }
+  .ud__shield {
+    color: #34d399;
+  }
+  .ud__shield[data-low='true'] {
+    color: #fb7185;
+  }
+  .ud__hi {
+    color: #a78bfa;
+  }
+  .ud__lvl {
+    color: #fbbf24;
+  }
+
+  .ud__stage {
+    position: relative;
+  }
+
+  .ud__canvas {
+    display: block;
+    width: 100%;
+    /* Backing store is set from this box times devicePixelRatio. */
+    aspect-ratio: 39 / 25;
+    touch-action: pan-y; /* page still scrolls until play starts */
+  }
+
+  /* Only capture gestures while actually playing. */
+  .ud.is-playing .ud__canvas {
+    cursor: none;
+    touch-action: none;
+  }
+
+  .ud__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: var(--space-6);
+    text-align: center;
+    background: linear-gradient(rgba(3, 7, 15, 0.55), rgba(3, 7, 15, 0.82));
+    transition: opacity var(--dur) var(--ease);
+  }
+
+  .ud__overlay.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .ud__title {
+    font-size: clamp(1.75rem, 5vw, 2.75rem);
+    line-height: 1.05;
+    letter-spacing: 0.03em;
+    background: linear-gradient(90deg, #4f7cff, #22d3ee);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .ud__blurb {
+    max-width: 44ch;
+    font-size: var(--text-sm);
+    color: #b6c2d4;
+  }
+
+  .ud__c-data {
+    color: #34d399;
+  }
+  .ud__c-fire {
+    color: #fb923c;
+  }
+  .ud__c-gold {
+    color: #fbbf24;
+  }
+  .ud__c-wide {
+    color: #22d3ee;
+  }
+
+  .ud__keys {
+    font-size: var(--text-xs);
+    color: #8fa0b6;
+    max-width: 44ch;
+  }
+
+  .ud__keys kbd {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    margin: 0 0.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.06);
+    color: #e9edf5;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .ud__tip {
+    margin: 0;
+    min-height: 1.4rem;
+    font-size: var(--text-sm);
+    color: var(--c-fg-muted);
+    text-align: center;
+    max-width: none;
+  }
+
+  .ud__tip b {
+    color: var(--c-fg);
+  }
+
+  @media (max-width: 560px) {
+    .ud__hud-hide-sm {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  type EntityType = 'data' | 'virus' | 'widen' | 'boost';
+
+  interface Entity {
+    type: EntityType;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    vy: number;
+    vx: number;
+    wobble: number;
+    wobbleAmp: number;
+    age: number;
+    trail: { x: number; y: number }[];
+  }
+
+  interface Particle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    life: number;
+    color: string;
+    r: number;
+  }
+
+  const STORAGE_KEY = 'mila.uptimeDefender.hi';
+
+  /** Reference playfield size. All game coordinates are in these units. */
+  const BASE_W = 780;
+  const BASE_H = 500;
+
+  /** Pickups get a forgiving hitbox; hazards get a tight one. Using the same
+   *  tolerance for both (as the original did) means fireballs hit you before
+   *  they visually touch, which reads as unfair. */
+  const PICKUP_TOL = 7;
+  const HAZARD_TOL = -4;
+
+  const root = document.querySelector<HTMLElement>('[data-ud]');
+
+  if (root) initGame(root);
+
+  function initGame(root: HTMLElement) {
+    const canvas = root.querySelector<HTMLCanvasElement>('[data-ud-canvas]')!;
+    const ctx = canvas.getContext('2d')!;
+    const startOverlay = root.querySelector<HTMLElement>('[data-ud-start]')!;
+    const overOverlay = root.querySelector<HTMLElement>('[data-ud-over]')!;
+    const overTitle = root.querySelector<HTMLElement>('[data-ud-over-title]')!;
+    const overDetail = root.querySelector<HTMLElement>('[data-ud-over-detail]')!;
+    const startBtn = root.querySelector<HTMLButtonElement>('[data-ud-start-btn]')!;
+    const againBtn = root.querySelector<HTMLButtonElement>('[data-ud-again-btn]')!;
+    const scoreEl = root.querySelector<HTMLElement>('[data-ud-score]')!;
+    const shieldEl = root.querySelector<HTMLElement>('[data-ud-shield]')!;
+    const hiEl = root.querySelector<HTMLElement>('[data-ud-hi]')!;
+    const lvlEl = root.querySelector<HTMLElement>('[data-ud-level]')!;
+    const tipEl = root.querySelector<HTMLElement>('[data-ud-tip]')!;
+
+    // Live-updating, so toggling the OS setting takes effect without a reload.
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let reduced = motionQuery.matches;
+    motionQuery.addEventListener('change', (e) => {
+      reduced = e.matches;
+    });
+
+    const finePointer = window.matchMedia('(pointer: fine)').matches;
+
+    // --- Playfield sizing -------------------------------------------------
+    // Backing store follows CSS size x devicePixelRatio, capped at 2 — beyond
+    // that the fill-rate cost outweighs any visible gain.
+    let W = BASE_W;
+    let H = BASE_H;
+
+    /**
+     * Reconciles the backing store with the element's real box x DPR.
+     *
+     * Deliberately a no-op when already correct, and called on a slow tick
+     * from the render loop as well as from events. DPR and layout can settle
+     * at genuinely awkward times — the pane scale arriving after first paint,
+     * fonts reflowing, a window dragged to a monitor with different scaling —
+     * and not all of those fire an event we can hook. Making the size
+     * self-correcting is far more reliable than trying to enumerate every
+     * trigger, and costs one layout read twice a second.
+     */
+    function resize(): boolean {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0) return false;
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const targetW = Math.round(rect.width * dpr);
+      const targetH = Math.round(rect.height * dpr);
+
+      W = rect.width;
+      H = rect.height;
+
+      if (canvas.width === targetW && canvas.height === targetH) {
+        // Transform survives unless the backing store is reassigned.
+        return false;
+      }
+
+      canvas.width = targetW;
+      canvas.height = targetH;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Keep the player on-screen and on the floor line after a resize.
+      if (player) {
+        player.y = H - H * 0.08;
+        player.x = clamp(player.x, player.w / 2 + 4, W - player.w / 2 - 4);
+      }
+      return true;
+    }
+
+    // --- Pre-rendered glow ------------------------------------------------
+    // The original called shadowBlur (20-26px) once per entity per frame.
+    // Canvas shadow blur is among the most expensive operations available;
+    // at level 5+ with 10+ entities it stalls on integrated graphics. A cached
+    // radial-gradient sprite gives the same look at a fraction of the cost.
+    const glowCache = new Map<string, HTMLCanvasElement>();
+
+    function glowSprite(color: string, radius: number): HTMLCanvasElement {
+      const key = `${color}@${radius}`;
+      const cached = glowCache.get(key);
+      if (cached) return cached;
+
+      const size = radius * 2;
+      const off = document.createElement('canvas');
+      off.width = size;
+      off.height = size;
+      const octx = off.getContext('2d')!;
+
+      const grad = octx.createRadialGradient(
+        radius, radius, 0,
+        radius, radius, radius
+      );
+      grad.addColorStop(0, color);
+      grad.addColorStop(0.45, color.replace(')', ', 0.35)').replace('rgb', 'rgba'));
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      octx.fillStyle = grad;
+      octx.fillRect(0, 0, size, size);
+
+      glowCache.set(key, off);
+      return off;
+    }
+
+    function drawGlow(color: string, x: number, y: number, radius: number) {
+      const sprite = glowSprite(color, Math.round(radius));
+      ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
+    }
+
+    // --- State ------------------------------------------------------------
+    type GameState = 'idle' | 'playing' | 'over';
+
+    let state: GameState = 'idle';
+    let paused = false;
+    let visible = true;
+
+    let player = {
+      x: BASE_W / 2,
+      y: BASE_H - 40,
+      baseW: 120,
+      w: 120,
+      h: 16,
+      speed: 450, // px per SECOND, not per frame
+    };
+
+    let entities: Entity[] = [];
+    let particles: Particle[] = [];
+    let stars: { x: number; y: number; s: number; v: number }[] = [];
+
+    let score = 0;
+    let lives = 3;
+    let level = 1;
+    let mult = 1;
+    let multTimer = 0;
+    let wideTimer = 0;
+    let holding = false;
+    let spawnTimer = 0;
+    let shake = 0;
+    let levelFlash = 0;
+    let attractTimer = 0;
+    let lastTime = 0;
+
+    const keys = { left: false, right: false };
+    let mx = -100;
+    let my = -100;
+    let pointerInCanvas = false;
+
+    let hi = readHi();
+    hiEl.textContent = String(hi);
+
+    function readHi(): number {
+      try {
+        return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10) || 0;
+      } catch {
+        return 0; // private mode / storage disabled
+      }
+    }
+
+    function writeHi(value: number) {
+      try {
+        localStorage.setItem(STORAGE_KEY, String(value));
+      } catch {
+        /* score simply won't persist */
+      }
+    }
+
+    const clamp = (v: number, lo: number, hi: number) =>
+      Math.max(lo, Math.min(hi, v));
+
+    function makeStars() {
+      const arr = [];
+      const count = reduced ? 24 : 46;
+      for (let i = 0; i < count; i++) {
+        arr.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          s: Math.random() * 1.8 + 0.5,
+          v: Math.random() * 14 + 5, // px/sec
+        });
+      }
+      return arr;
+    }
+
+    function resetGame() {
+      player = {
+        x: W / 2,
+        y: H - H * 0.08,
+        baseW: 120,
+        w: 120,
+        h: 16,
+        speed: 450,
+      };
+      entities = [];
+      particles = [];
+      stars = makeStars();
+      score = 0;
+      lives = 3;
+      level = 1;
+      mult = 1;
+      multTimer = 0;
+      wideTimer = 0;
+      holding = false;
+      spawnTimer = 0;
+      shake = 0;
+      levelFlash = 0;
+      scoreEl.textContent = '0';
+      lvlEl.textContent = '1';
+      updateShield();
+    }
+
+    function updateShield() {
+      shieldEl.textContent = `${Math.max(0, lives)}/3`;
+      shieldEl.dataset.low = lives <= 1 ? 'true' : 'false';
+    }
+
+    // --- Spawning ---------------------------------------------------------
+    function spawnEntity() {
+      const r = Math.random();
+      // Rebalanced: the original made ~25% of spawns power-ups, so double
+      // score and wide-bar were up most of the time.
+      const type: EntityType =
+        r < 0.58 ? 'data' : r < 0.87 ? 'virus' : r < 0.94 ? 'widen' : 'boost';
+
+      const size = type === 'data' ? 26 : 30;
+
+      entities.push({
+        type,
+        x: size + Math.random() * (W - size * 2),
+        y: -size,
+        w: size,
+        h: size,
+        vy: (90 + Math.random() * 90 + (level - 1) * 25), // px/sec
+        vx: type === 'virus' ? (Math.random() > 0.5 ? 36 : -36) : 0,
+        wobble: Math.random() * Math.PI * 2,
+        wobbleAmp: type === 'virus' ? 1.4 : 0.7,
+        age: 0,
+        trail: [],
+      });
+    }
+
+    function burst(x: number, y: number, color: string, n: number) {
+      if (reduced) return; // motion-sensitive users get no particle spray
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 60 + Math.random() * 190;
+        particles.push({
+          x, y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          life: 1,
+          color,
+          r: 2 + Math.random() * 2,
+        });
+      }
+    }
+
+    function hitTest(e: Entity): boolean {
+      const tol = e.type === 'virus' ? HAZARD_TOL : PICKUP_TOL;
+      return (
+        e.x + e.w / 2 + tol > player.x - player.w / 2 &&
+        e.x - e.w / 2 - tol < player.x + player.w / 2 &&
+        e.y + e.h / 2 + tol > player.y &&
+        e.y - e.h / 2 - tol < player.y + player.h
+      );
+    }
+
+    function stepParticles(dt: number) {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 220 * dt;
+        p.life -= dt * 2.1;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+    }
+
+    function stepStars(dt: number) {
+      if (reduced) return;
+      for (const st of stars) {
+        st.y += st.v * dt;
+        if (st.y > H) {
+          st.y = -2;
+          st.x = Math.random() * W;
+        }
+      }
+    }
+
+    // --- Update -----------------------------------------------------------
+    function update(dt: number) {
+      // Time-scaled. The original applied speed per frame, so a 144Hz display
+      // moved 2.4x faster than 60Hz — and the high score is persisted.
+      let px = player.x;
+      if (keys.left) px -= player.speed * dt;
+      if (keys.right) px += player.speed * dt;
+
+      player.w = holding
+        ? player.baseW / 2
+        : wideTimer > 0
+          ? player.baseW + 70
+          : player.baseW;
+
+      player.x = clamp(px, player.w / 2 + 4, W - player.w / 2 - 4);
+
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) {
+        spawnEntity();
+        if (Math.random() < 0.3) spawnEntity();
+        spawnTimer = Math.max(0.34, 1.15 - (level - 1) * 0.08);
+      }
+
+      for (let i = entities.length - 1; i >= 0; i--) {
+        const e = entities[i];
+        e.age += dt;
+        e.y += e.vy * dt;
+        e.wobble += dt * 3;
+        e.x += (e.vx + Math.sin(e.wobble) * e.wobbleAmp * 18) * dt;
+        e.x = clamp(e.x, e.w / 2, W - e.w / 2);
+
+        e.trail.unshift({ x: e.x, y: e.y });
+        if (e.trail.length > 7) e.trail.pop();
+
+        if (e.y > H + 30) {
+          entities.splice(i, 1);
+          continue;
+        }
+
+        if (!hitTest(e)) continue;
+
+        entities.splice(i, 1);
+
+        if (e.type === 'data') {
+          const pts = 10 * mult;
+          score += pts;
+          burst(e.x, e.y, '#34d399', 10);
+          setTip(`Packet secured. <b>+${pts} points</b>`);
+        } else if (e.type === 'boost') {
+          mult = 2;
+          multTimer = 6;
+          score += 25;
+          burst(e.x, e.y, '#fbbf24', 16);
+          setTip('Gold core — <b>double score</b> for 6 seconds.');
+        } else if (e.type === 'widen') {
+          wideTimer = 8;
+          score += 15;
+          burst(e.x, e.y, '#22d3ee', 16);
+          setTip('Widener — <b>bar lengthened</b> for 8 seconds.');
+        } else {
+          lives--;
+          updateShield();
+          if (!reduced) shake = 12;
+          burst(e.x, e.y, '#f87171', 18);
+          setTip(`Fireball hit. <b>Shield ${Math.max(0, lives)}/3</b>`);
+          if (lives <= 0) {
+            gameOver();
+            return;
+          }
+        }
+      }
+
+      if (multTimer > 0) {
+        multTimer -= dt;
+        if (multTimer <= 0) {
+          mult = 1;
+          setTip('Multiplier expired.');
+        }
+      }
+
+      if (wideTimer > 0) {
+        wideTimer -= dt;
+        if (wideTimer <= 0) {
+          wideTimer = 0;
+          setTip('Widener wore off.');
+        }
+      }
+
+      const newLevel = Math.floor(score / 500) + 1;
+      if (newLevel > level) {
+        level = newLevel;
+        if (!reduced) levelFlash = 1;
+        lvlEl.textContent = String(level);
+        setTip(`Level ${level} — <b>things speed up</b>`);
+      }
+
+      stepParticles(dt);
+      if (shake > 0) shake -= dt * 40;
+      if (levelFlash > 0) levelFlash -= dt * 1.4;
+      scoreEl.textContent = String(score);
+    }
+
+    function attractUpdate(dt: number) {
+      attractTimer -= dt;
+      if (attractTimer <= 0) {
+        spawnEntity();
+        attractTimer = 0.7;
+      }
+      for (let i = entities.length - 1; i >= 0; i--) {
+        const e = entities[i];
+        e.age += dt;
+        e.y += e.vy * dt * 0.8;
+        e.wobble += dt * 3;
+        e.x += Math.sin(e.wobble) * 12 * dt;
+        e.trail.unshift({ x: e.x, y: e.y });
+        if (e.trail.length > 7) e.trail.pop();
+        if (e.y > H + 40) entities.splice(i, 1);
+      }
+      stepParticles(dt);
+    }
+
+    // --- Draw -------------------------------------------------------------
+    function drawBackdrop() {
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, 'rgba(26, 40, 74, 0.75)');
+      grad.addColorStop(0.72, 'rgba(13, 24, 48, 0.85)');
+      grad.addColorStop(1, 'rgba(34, 211, 238, 0.28)');
+      ctx.fillStyle = '#0c1530';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      const g = 46;
+      ctx.strokeStyle = 'rgba(120, 160, 255, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 0; x < W; x += g) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+      }
+      for (let y = 0; y < H; y += g) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(160, 200, 255, 0.7)';
+      for (const st of stars) ctx.fillRect(st.x, st.y, st.s, st.s);
+
+      const floor = ctx.createLinearGradient(0, H - 120, 0, H);
+      floor.addColorStop(0, 'rgba(248, 113, 113, 0)');
+      floor.addColorStop(1, 'rgba(248, 113, 113, 0.22)');
+      ctx.fillStyle = floor;
+      ctx.fillRect(0, H - 120, W, 120);
+
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.55)';
+      ctx.setLineDash([6, 10]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(8, player.y + 6);
+      ctx.lineTo(W - 8, player.y + 6);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (state === 'playing' && !paused) {
+        const pulse = reduced ? 1 : 0.6 + Math.sin(performance.now() / 200) * 0.4;
+        ctx.fillStyle = `rgba(52, 211, 153, ${pulse})`;
+        ctx.font = `600 15px ${FONT}`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('● LIVE', 16, 28);
+      }
+    }
+
+    const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+    function drawEntity(e: Entity) {
+      const col =
+        e.type === 'data' ? '#34d399'
+        : e.type === 'virus' ? '#fb923c'
+        : e.type === 'widen' ? '#22d3ee'
+        : '#fbbf24';
+
+      // Trail
+      if (!reduced) {
+        e.trail.forEach((t, ti) => {
+          const fade = 1 - ti / e.trail.length;
+          ctx.globalAlpha = fade * 0.35;
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, (e.w / 2) * fade * 0.7, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      const scale = Math.min(1, e.age * 14);
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      ctx.scale(scale, scale);
+
+      drawGlow(col, 0, 0, e.w * 0.95);
+
+      if (e.type === 'data') {
+        ctx.fillStyle = '#34d399';
+        ctx.beginPath();
+        ctx.roundRect(-e.w / 2, -e.h / 2, e.w, e.h, 6);
+        ctx.fill();
+        ctx.fillStyle = '#0b1a14';
+        ctx.beginPath();
+        ctx.roundRect(-e.w / 2 + 3.5, -e.h / 2 + 3.5, e.w - 7, e.h - 7, 4);
+        ctx.fill();
+        ctx.fillStyle = '#4ade80';
+        ctx.font = `bold 14px ${FONT}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('DATA', 0, 1);
+      } else if (e.type === 'virus') {
+        // Flicker is motion; hold it steady for reduced-motion users.
+        const flick = reduced ? 1 : 1 + Math.random() * 0.3;
+        const fgrad = ctx.createRadialGradient(0, 0, 1, 0, 0, (e.w / 2) * flick);
+        fgrad.addColorStop(0, '#fff7e0');
+        fgrad.addColorStop(0.3, '#ffd166');
+        fgrad.addColorStop(0.65, '#ff7a1a');
+        fgrad.addColorStop(1, '#e11d48');
+        ctx.fillStyle = fgrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, (e.w / 2) * flick, 0, Math.PI * 2);
+        ctx.fill();
+
+        const tw = reduced ? 1 : 0.8 + Math.random() * 0.5;
+        ctx.fillStyle = 'rgba(255, 122, 26, 0.85)';
+        ctx.beginPath();
+        ctx.moveTo(-e.w * 0.24, 0);
+        ctx.lineTo(0, -e.h * 0.95 * tw);
+        ctx.lineTo(e.w * 0.24, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#fff7e0';
+        ctx.beginPath();
+        ctx.arc(0, 0, e.w * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 200, 120, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.w / 2 + 2, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (e.type === 'widen') {
+        ctx.fillStyle = '#22d3ee';
+        ctx.beginPath();
+        ctx.roundRect(-e.w / 2, -e.h / 2, e.w, e.h, 9);
+        ctx.fill();
+        ctx.fillStyle = '#062a30';
+        ctx.beginPath();
+        ctx.roundRect(-e.w / 2 + 3, -e.h / 2 + 3, e.w - 6, e.h - 6, 7);
+        ctx.fill();
+        ctx.strokeStyle = '#67e8f9';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-3, -5); ctx.lineTo(-9, 0); ctx.lineTo(-3, 5);
+        ctx.moveTo(3, -5); ctx.lineTo(9, 0); ctx.lineTo(3, 5);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(0, 0, e.w / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff7d6';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.w / 2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#7c5a00';
+        ctx.font = `bold 15px ${FONT}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('×2', 0, 1);
+      }
+
+      ctx.restore();
+    }
+
+    function drawPlayer() {
+      const glow = mult > 1 ? '#fbbf24' : '#22d3ee';
+      drawGlow(glow, player.x, player.y + player.h / 2, player.w * 0.62);
+
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.roundRect(player.x - player.w / 2, player.y, player.w, player.h, 8);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.roundRect(player.x - player.w / 2 + 4, player.y + 3, player.w - 8, 4, 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(player.x - player.w / 2, player.y, player.w, player.h);
+
+      if (wideTimer > 0) {
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.7)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 6]);
+        ctx.strokeRect(
+          player.x - player.w / 2 - 10,
+          player.y - 12,
+          player.w + 20,
+          player.h + 24
+        );
+        ctx.setLineDash([]);
+      }
+
+      if (holding) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(player.x - player.w / 2 - 12, player.y - 4);
+        ctx.lineTo(player.x - player.w / 2 - 12, player.y + player.h + 4);
+        ctx.moveTo(player.x + player.w / 2 + 12, player.y - 4);
+        ctx.lineTo(player.x + player.w / 2 + 12, player.y + player.h + 4);
+        ctx.stroke();
+      }
+    }
+
+    function drawCrosshair() {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.85)';
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.12)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(mx, my, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#22d3ee';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(mx - 17, my); ctx.lineTo(mx - 7, my);
+      ctx.moveTo(mx + 7, my); ctx.lineTo(mx + 17, my);
+      ctx.moveTo(mx, my - 17); ctx.lineTo(mx, my - 7);
+      ctx.moveTo(mx, my + 7); ctx.lineTo(mx, my + 17);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.save();
+
+      // Shake is applied BEFORE the backdrop. The original translated after
+      // drawing it, so the grid stayed still while entities jittered — which
+      // read as a rendering glitch rather than impact.
+      if (shake > 0) {
+        ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+      }
+
+      drawBackdrop();
+      entities.forEach(drawEntity);
+
+      particles.forEach((p) => {
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      drawPlayer();
+
+      if (pointerInCanvas && state === 'playing' && finePointer) drawCrosshair();
+
+      if (levelFlash > 0) {
+        ctx.globalAlpha = Math.max(0, levelFlash) * 0.5;
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(3, 3, W - 6, H - 6);
+        ctx.globalAlpha = 1;
+      }
+
+      if (multTimer > 0) {
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.9)';
+        ctx.font = `600 15px ${FONT}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(`×${mult} · ${multTimer.toFixed(1)}s`, W / 2, 30);
+      }
+
+      if (wideTimer > 0) {
+        ctx.fillStyle = 'rgba(34, 211, 238, 0.95)';
+        ctx.font = `600 13px ${FONT}`;
+        ctx.textAlign = 'center';
+        ctx.fillText(`WIDE · ${wideTimer.toFixed(1)}s`, W / 2, 50);
+      }
+
+      ctx.restore();
+    }
+
+    // --- Loop -------------------------------------------------------------
+    let sizeTick = 0;
+
+    function loop(ts: number) {
+      // Clamped so a backgrounded tab doesn't resume with a huge delta and
+      // teleport everything through the player.
+      const dt = Math.min((ts - lastTime) / 1000, 0.05);
+      lastTime = ts;
+
+      if (visible) {
+        // Twice a second, cheap, and a no-op unless something actually moved.
+        if (++sizeTick % 30 === 0) resize();
+
+        if (state === 'playing' && !paused) update(dt);
+        else attractUpdate(dt);
+        stepStars(dt);
+        draw();
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    // --- Transitions ------------------------------------------------------
+    function setTip(html: string) {
+      // Only ever fed internal numbers and literals — no external input.
+      tipEl.innerHTML = html;
+    }
+
+    function startGame() {
+      resetGame();
+      state = 'playing';
+      paused = false;
+      lastTime = performance.now();
+      root.classList.add('is-playing');
+      startOverlay.classList.add('is-hidden');
+      overOverlay.classList.add('is-hidden');
+      setTip('Catch the packets. <b>Good luck.</b>');
+    }
+
+    function gameOver() {
+      state = 'over';
+      root.classList.remove('is-playing');
+
+      // Capture whether this is a record BEFORE mutating hi. The original
+      // updated hi first and then tested `score >= hi`, so merely tying your
+      // best falsely announced a new high score — and contradicted the tip
+      // line directly underneath it.
+      const isRecord = score > hi;
+      if (isRecord) {
+        hi = score;
+        writeHi(hi);
+        hiEl.textContent = String(hi);
+      }
+
+      overTitle.textContent = isRecord ? 'NEW HIGH SCORE' : 'SYSTEM COMPROMISED';
+      overDetail.innerHTML = `Score <b>${score}</b> · Level ${level} · Best <b>${hi}</b>`;
+      setTip(
+        isRecord
+          ? `New high score: <b>${score}</b>.`
+          : `Final score <b>${score}</b>. Best is ${hi}.`
+      );
+
+      overOverlay.classList.remove('is-hidden');
+    }
+
+    function togglePause() {
+      if (state !== 'playing') return;
+      paused = !paused;
+      if (!paused) lastTime = performance.now();
+      setTip(
+        paused
+          ? 'Paused — press <b>Space</b> to resume.'
+          : 'Resumed.'
+      );
+    }
+
+    // --- Input ------------------------------------------------------------
+    startBtn.addEventListener('click', startGame);
+    againBtn.addEventListener('click', startGame);
+
+    function isTyping() {
+      const el = document.activeElement;
+      return (
+        !!el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.tagName === 'SELECT' ||
+          (el as HTMLElement).isContentEditable)
+      );
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (isTyping()) return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+
+      if (e.key === ' ') {
+        // Only hijack space when the game is actually on screen, otherwise it
+        // steals page-down from someone reading further up.
+        if (!visible) return;
+        e.preventDefault();
+        if (state === 'playing') togglePause();
+        else startGame();
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+    });
+
+    function pointerToPlayfield(clientX: number, clientY: number) {
+      const rect = canvas.getBoundingClientRect();
+      mx = ((clientX - rect.left) / rect.width) * W;
+      my = ((clientY - rect.top) / rect.height) * H;
+      player.x = clamp(mx, player.w / 2 + 4, W - player.w / 2 - 4);
+    }
+
+    canvas.addEventListener('mousemove', (e) => {
+      pointerInCanvas = true;
+      if (state === 'playing') pointerToPlayfield(e.clientX, e.clientY);
+    });
+    canvas.addEventListener('mouseenter', () => { pointerInCanvas = true; });
+    canvas.addEventListener('mouseleave', () => { pointerInCanvas = false; });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      if (state === 'playing' && finePointer) holding = true;
+    });
+    window.addEventListener('mouseup', () => { holding = false; });
+
+    // Touch: start on tap, and only capture the gesture once playing — so the
+    // page still scrolls normally for someone swiping past the game.
+    canvas.addEventListener('touchstart', (e) => {
+      if (state !== 'playing') {
+        startGame();
+        e.preventDefault();
+        return;
+      }
+      const t = e.touches[0];
+      if (t) pointerToPlayfield(t.clientX, t.clientY);
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (state !== 'playing') return; // let the page scroll
+      const t = e.touches[0];
+      if (t) pointerToPlayfield(t.clientX, t.clientY);
+      e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && state === 'playing' && !paused) {
+        paused = true;
+        setTip('Paused — you left the tab. <b>Space</b> to resume.');
+      }
+    });
+
+    // Stop rendering entirely when scrolled out of view: on a page with other
+    // content there is no reason to burn a GPU on an unseen canvas.
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        ([entry]) => {
+          visible = entry.isIntersecting;
+          if (visible) {
+            lastTime = performance.now();
+            // Size immediately on becoming visible rather than waiting for the
+            // slow tick — the game sits below the fold, so this is the normal
+            // path, and a frame at the wrong backing scale would be visible.
+            resize();
+          } else if (state === 'playing' && !paused) {
+            paused = true;
+            setTip('Paused — scrolled out of view. <b>Space</b> to resume.');
+          }
+        },
+        { threshold: 0.15 }
+      );
+      io.observe(canvas);
+    }
+
+    // --- Boot -------------------------------------------------------------
+    let resizeTimer: number | undefined;
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(resize, 120);
+    });
+
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(() => resize()).observe(canvas);
+    }
+
+    resize();
+    resetGame();
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+  }
+</script>

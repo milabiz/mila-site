@@ -1,0 +1,12 @@
+# Mila Business Solutions LLC
+
+> AI automation built on solid data foundations. We help small and mid-sized businesses replace slow, manual, or unreliable work with AI agents, automated reporting, and well-engineered data platforms.
+
+## Services
+- [Services](https://milabiz.com/services): AI Automation & Agents, AI on Your Own Data, Data Platform Engineering
+- [SQL Performance Review demo](https://milabiz.com/demo): paste a slow SQL query, get a plain-English review with index and rewrite suggestions
+
+## About
+- [About](https://milabiz.com/about): engineering principles, what we take on, and what we turn down
+- [Blog](https://milabiz.com/blog)
+- [Contact](https://milabiz.com/contact): describe what's slow, manual, or unreliable and we'll tell you whether it's worth fixing

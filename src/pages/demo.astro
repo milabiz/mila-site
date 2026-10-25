@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Section from '../components/Section.astro';
+import SqlReview from '../components/SqlReview.astro';
+---
+
+<BaseLayout
+  title="SQL Performance Review — Mila Business Solutions LLC"
+  description="Paste a slow SQL query and get a plain-English performance review: what's likely slowing it down, which indexes would help, and a suggested rewrite."
+>
+  <Section narrow>
+    <div class="reveal">
+      <p class="eyebrow">Live tool</p>
+      <h1 style="margin-top:var(--space-3);">SQL Performance Review</h1>
+      <p class="lead" style="margin-top:var(--space-4);">
+        Paste a query that feels slow. You'll get a plain-English read on what's
+        likely hurting it, which indexes would help, and a suggested rewrite.
+      </p>
+      <p class="muted" style="margin-top:var(--space-4);">
+        This is a review, not a guarantee. Without your execution plan, table
+        sizes, and existing indexes, no tool can truly <em>optimise</em> a query
+        &mdash; so this one doesn't claim to. Add your schema definitions and the
+        analysis gets considerably sharper.
+      </p>
+    </div>
+  </Section>
+
+  <Section narrow tight>
+    <SqlReview />
+  </Section>
+
+  <Section sunken narrow title="What this actually does">
+    <div class="grid grid--2">
+      <div>
+        <h3>Good at</h3>
+        <ul class="muted" style="margin-top:var(--space-3); padding-left:var(--space-5);">
+          <li>Spotting predicates that stop an index being used</li>
+          <li>Finding per-row work that could be done once</li>
+          <li>Proposing a covering index from supplied DDL</li>
+          <li>Explaining the problem in terms a non-DBA can act on</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Can't do</h3>
+        <ul class="muted" style="margin-top:var(--space-3); padding-left:var(--space-5);">
+          <li>See your execution plan, row counts, or data distribution</li>
+          <li>Know which indexes you already have, unless you paste them</li>
+          <li>Account for your hardware, contention, or statistics</li>
+          <li>Replace testing a change before it goes to production</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:var(--space-6);">
+      That list is the honest version. If the second column is where your real
+      problem lives, that's the work we do with clients directly &mdash;
+      <a href="/contact/">get in touch</a>.
+    </p>
+  </Section>
+</BaseLayout>

@@ -1,13 +1,143 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Section from '../components/Section.astro';
 ---
 
-<BaseLayout title="About - Mila Business Solutions LLC" description="Learn about Mila Business Solutions LLC — a seasoned database and development consulting firm delivering practical, innovative solutions.">
-  <section>
-    <h2>About Us</h2>
-    <p>Founded by a seasoned database professional with years of experience in enterprise environments, Mila Business Solutions LLC delivers reliable, innovative solutions. We focus on practical results — helping clients from startups to large organizations manage data effectively.</p>
-    <div class="about-highlight">
-      Our approach: Listen, analyze, implement. No fluff, just impact.
+<BaseLayout
+  title="About — Mila Business Solutions LLC"
+  description="How Mila Business Solutions works: engineering principles, what we take on, and what we turn down."
+>
+  <Section narrow>
+    <div class="reveal">
+      <p class="eyebrow">About</p>
+      <h1 style="margin-top:var(--space-3);">How we work</h1>
+      <p class="lead" style="margin-top:var(--space-4);">
+        Mila Business Solutions is a small consultancy built on two decades of
+        enterprise data systems — the kind where an outage means the business
+        stops, and a bad schema decision is still causing pain eight years
+        later.
+      </p>
+      <p style="margin-top:var(--space-4);">
+        That background shapes what we build. Most of what gets sold as AI
+        automation is a thin layer over data that was never structured to
+        support it. It demos beautifully and falls over in month three. We would
+        rather fix the foundation first and tell you that plainly, even when
+        it's the less exciting answer.
+      </p>
     </div>
-  </section>
+  </Section>
+
+  <Section sunken title="Principles we don't bend on">
+    <div class="grid grid--2">
+      <div class="principle">
+        <h3>Uncertainty gets escalated, never guessed</h3>
+        <p class="muted">
+          An automated system that invents a plausible answer is worse than one
+          that stops and asks. Every pipeline we build has an explicit "I don't
+          know" path that reaches a human.
+        </p>
+      </div>
+      <div class="principle">
+        <h3>Nothing is deleted, only marked</h3>
+        <p class="muted">
+          User-generated data gets soft-deleted. Recovering a row someone
+          removed by accident should be a query, not a restore from backup.
+        </p>
+      </div>
+      <div class="principle">
+        <h3>It has to survive a bad network</h3>
+        <p class="muted">
+          Connections drop, phones sleep, VPNs reconnect. Anything we build
+          assumes the unreliable case is normal, because for anyone working
+          remotely it is.
+        </p>
+      </div>
+      <div class="principle">
+        <h3>Idempotent by default</h3>
+        <p class="muted">
+          Jobs can be re-run. Installers can be applied twice. A retry should
+          never be the thing that causes the incident.
+        </p>
+      </div>
+      <div class="principle">
+        <h3>Least privilege, even internally</h3>
+        <p class="muted">
+          Private networks get treated as hostile. Secrets stay server-side,
+          credentials are scoped to one job, and "it's only on the internal
+          network" is not a security model.
+        </p>
+      </div>
+      <div class="principle">
+        <h3>Handover is part of the work</h3>
+        <p class="muted">
+          If your team can't operate it without us, we haven't finished. The
+          goal is a system you own, not a dependency on us.
+        </p>
+      </div>
+    </div>
+  </Section>
+
+  <Section narrow title="What we turn down">
+    <p>
+      Being useful means being clear about the edges. We'll say no to:
+    </p>
+    <ul class="turn-down">
+      <li>
+        <strong>AI added because it should have AI.</strong> If a scheduled query
+        and a well-built form solve it, that's what we'll recommend — and it will
+        cost you less.
+      </li>
+      <li>
+        <strong>Automating a broken process.</strong> Making a bad workflow run
+        faster just produces bad results sooner. The process gets fixed first or
+        not at all.
+      </li>
+      <li>
+        <strong>Anything requiring a live production database credential we
+        don't need.</strong> If read-only access to a replica will do, that's what
+        we'll ask for.
+      </li>
+      <li>
+        <strong>Work where we'd be the wrong choice.</strong> Front-end design
+        systems, mobile apps, and infrastructure at hyperscale are all real
+        disciplines that aren't ours. We'll say so.
+      </li>
+    </ul>
+
+    <p style="margin-top:var(--space-7);">
+      Still sounds like a fit? <a href="/contact/">Describe what's not working</a>
+      — or <a href="/demo/">try the SQL review</a> first and judge the output
+      before you spend an email on us.
+    </p>
+  </Section>
 </BaseLayout>
+
+<style>
+  .principle h3 {
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-2);
+  }
+
+  .principle p {
+    font-size: var(--text-sm);
+  }
+
+  .turn-down {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-5) 0 0;
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .turn-down li {
+    padding-left: var(--space-5);
+    border-left: 2px solid var(--c-border-strong);
+    color: var(--c-fg-muted);
+    font-size: var(--text-sm);
+  }
+
+  .turn-down strong {
+    color: var(--c-fg);
+  }
+</style>

@@ -6,7 +6,10 @@
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(npx astro:*)",
-      "Bash(taskkill //F //IM node.exe)"
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(nslookup milabiz.com)",
+      "Bash(nslookup milabiz.com 8.8.8.8)",
+      "Bash(curl -sI https://milabiz.com)"
     ]
   }
 }

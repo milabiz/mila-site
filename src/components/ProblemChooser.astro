@@ -1,0 +1,161 @@
+---
+interface Option {
+  /** Anchor target — must match a Vignette id on the same page. */
+  target: string;
+  label: string;
+  service: string;
+}
+
+interface Props {
+  options: Option[];
+}
+
+const { options } = Astro.props;
+---
+
+{/*
+  Real anchors first, enhanced with JS second.
+
+  Authoring these as <button>s with a claimed no-JS fallback is how "works
+  without JavaScript" quietly becomes untrue. As anchors, the fallback is real
+  by construction: with JS off every option still jumps to its vignette, and
+  every vignette is visible because the filtering class is only ever added by
+  script.
+*/}
+<div class="chooser" data-chooser>
+  <ul class="chooser__list">
+    {
+      options.map(({ target, label, service }) => (
+        <li>
+          <a href={`#${target}`} class="chooser__option" data-chooser-option data-target={target}>
+            <span class="chooser__label">{label}</span>
+            <span class="chooser__service">{service}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="chooser__reset" hidden data-chooser-reset-wrap>
+    <button type="button" class="btn btn--ghost" data-chooser-reset>
+      Show all examples
+    </button>
+  </p>
+</div>
+
+<style>
+  .chooser__list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: var(--space-3);
+    padding: 0;
+    margin: 0;
+  }
+
+  .chooser__option {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    height: 100%;
+    padding: var(--space-4);
+    background: var(--c-bg-raised);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--c-fg);
+    transition: border-color var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease),
+      transform var(--dur-fast) var(--ease);
+  }
+
+  .chooser__option:hover {
+    color: var(--c-fg);
+    border-color: var(--c-accent);
+    transform: translateY(-2px);
+  }
+
+  .chooser__option[aria-current='true'] {
+    border-color: var(--c-accent);
+    background: var(--c-accent-soft);
+  }
+
+  .chooser__label {
+    font-weight: 600;
+    font-size: var(--text-sm);
+    line-height: 1.35;
+  }
+
+  .chooser__service {
+    font-size: var(--text-xs);
+    color: var(--c-fg-subtle);
+    margin-top: auto;
+  }
+
+  .chooser__reset {
+    margin-top: var(--space-4);
+  }
+
+  .chooser__reset[hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  const chooser = document.querySelector<HTMLElement>('[data-chooser]');
+  const vignettes = document.querySelectorAll<HTMLElement>('[data-vignette]');
+  const resetWrap = document.querySelector<HTMLElement>('[data-chooser-reset-wrap]');
+
+  if (chooser && vignettes.length > 0) {
+    const options = chooser.querySelectorAll<HTMLAnchorElement>(
+      '[data-chooser-option]'
+    );
+
+    const showAll = () => {
+      vignettes.forEach((v) => {
+        v.hidden = false;
+      });
+      options.forEach((o) => o.removeAttribute('aria-current'));
+      if (resetWrap) resetWrap.hidden = true;
+    };
+
+    const filterTo = (target: string) => {
+      vignettes.forEach((v) => {
+        v.hidden = v.id !== target;
+      });
+      options.forEach((o) =>
+        o.dataset.target === target
+          ? o.setAttribute('aria-current', 'true')
+          : o.removeAttribute('aria-current')
+      );
+      if (resetWrap) resetWrap.hidden = false;
+    };
+
+    options.forEach((option) => {
+      option.addEventListener('click', (event) => {
+        const target = option.dataset.target;
+        if (!target) return;
+
+        // Prevent the hash jump only once we know we can handle it in-place.
+        event.preventDefault();
+        filterTo(target);
+
+        document.getElementById(target)?.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? 'auto'
+            : 'smooth',
+          block: 'start',
+        });
+      });
+    });
+
+    chooser
+      .querySelector('[data-chooser-reset]')
+      ?.addEventListener('click', showAll);
+
+    // Deep link support: /#vignette-id filters on load.
+    const initial = window.location.hash.slice(1);
+    if (initial && document.getElementById(initial)?.dataset.vignette !== undefined) {
+      filterTo(initial);
+    }
+  }
+</script>

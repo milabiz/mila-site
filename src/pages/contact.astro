@@ -1,105 +1,218 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Section from '../components/Section.astro';
 ---
 
-<BaseLayout title="Contact - Mila Business Solutions LLC" description="Get in touch with Mila Business Solutions LLC for database consulting and development services.">
-  <section>
-    <h2>Get in Touch</h2>
-    <p>Email: <a href="mailto:admin@milabiz.com">admin@milabiz.com</a></p>
+<BaseLayout
+  title="Contact — Mila Business Solutions LLC"
+  description="Describe what's slow, manual, or unreliable. We'll tell you whether it's worth fixing and how."
+>
+  <Section narrow>
+    <div class="reveal">
+      <p class="eyebrow">Contact</p>
+      <h1 style="margin-top:var(--space-3);">Describe what's not working</h1>
+      <p class="lead" style="margin-top:var(--space-4);">
+        The more specific the better. "Our month-end report takes four hours and
+        locks the system" gets a far more useful reply than "we're interested in
+        AI".
+      </p>
+      <p class="muted" style="margin-top:var(--space-4);">
+        Prefer email? <a href="mailto:admin@milabiz.com">admin@milabiz.com</a>.
+      </p>
+    </div>
+  </Section>
 
-    <form id="contact-form">
-      <label for="name">Name</label>
-      <input type="text" id="name" name="name" required />
+  <Section narrow tight>
+    <form id="contact-form" class="contact-form" novalidate>
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required autocomplete="name" />
+      </div>
 
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" required />
+      <div class="field">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          autocomplete="email"
+        />
+      </div>
 
-      <label for="message">Message</label>
-      <textarea id="message" name="message" rows="5" required></textarea>
+      <div class="field">
+        <label for="message">What's the problem?</label>
+        <textarea
+          id="message"
+          name="message"
+          rows="7"
+          required
+          aria-describedby="message-hint"></textarea>
+        <p class="field__hint" id="message-hint">
+          What's slow, manual, or unreliable — and roughly how often it bites.
+        </p>
+      </div>
 
-      <!-- Honeypot: hidden from humans, bots fill it -->
-      <input type="text" name="website" id="website" style="display:none" tabindex="-1" autocomplete="off" />
+      {/* Honeypot: hidden from humans, bots fill it. */}
+      <div class="hp" aria-hidden="true">
+        <label for="website">Website</label>
+        <input
+          type="text"
+          name="website"
+          id="website"
+          tabindex="-1"
+          autocomplete="off"
+        />
+      </div>
 
-      <button type="submit" id="submit-btn">Send Message</button>
+      <div class="contact-form__actions">
+        <button type="submit" class="btn btn--primary btn--lg" id="submit-btn">
+          Send message
+        </button>
+        <p class="muted contact-form__note">
+          Stored so we can reply, nothing else — see
+          <a href="/privacy/">privacy</a>.
+        </p>
+      </div>
     </form>
 
-    <div id="form-status" style="display:none;"></div>
-  </section>
+    <p id="form-status" role="status" class="contact-form__status"></p>
+  </Section>
 </BaseLayout>
+
+<style>
+  .contact-form {
+    display: block;
+    max-width: 34rem;
+  }
+
+  .contact-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+  }
+
+  .contact-form__note {
+    font-size: var(--text-xs);
+    margin: 0;
+  }
+
+  .contact-form__status:empty {
+    display: none;
+  }
+
+  .contact-form__status {
+    margin-top: var(--space-5);
+    max-width: 34rem;
+  }
+
+  .hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+</style>
 
 <script>
   import { createClient } from '@supabase/supabase-js';
 
-  document.addEventListener('astro:page-load', () => {
+  /**
+   * Astro component scripts are ES modules, so they are deferred and run after
+   * the DOM is parsed — init can be called directly.
+   *
+   * This previously hung off `astro:page-load`, which ONLY fires when Astro's
+   * ClientRouter is enabled. It isn't, so the event never fired, no submit
+   * handler was ever attached, and the form silently fell back to a native GET
+   * — putting the visitor's message in the URL and never reaching Supabase.
+   * Every submission since was lost. If ClientRouter is ever added, the
+   * listener below picks it up on subsequent navigations.
+   */
+  function initContactForm() {
     const form = document.getElementById('contact-form') as HTMLFormElement | null;
-    const statusDiv = document.getElementById('form-status') as HTMLDivElement | null;
+    const status = document.getElementById('form-status') as HTMLElement | null;
     const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement | null;
 
-    if (!form || !statusDiv || !submitBtn) return;
+    if (!form || !status || !submitBtn) return;
+    if (form.dataset.bound === 'true') return; // idempotent
+    form.dataset.bound = 'true';
 
     const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
     const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
+    const setStatus = (message: string, kind: 'success' | 'error') => {
+      status.textContent = message;
+      status.className = `contact-form__status status status--${kind}`;
+    };
+
     if (!supabaseUrl || !supabaseKey) {
-      console.error('Missing Supabase environment variables. Check PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.');
+      console.error('[contact] Missing PUBLIC_SUPABASE_URL / PUBLIC_SUPABASE_ANON_KEY');
+      setStatus(
+        'The form is unavailable right now. Please email admin@milabiz.com directly.',
+        'error'
+      );
+      submitBtn.disabled = true;
       return;
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
 
-      // Honeypot check
+      const name = (form.elements.namedItem('name') as HTMLInputElement).value.trim();
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value.trim();
+      const message = (form.elements.namedItem('message') as HTMLTextAreaElement).value.trim();
       const honeypot = (form.elements.namedItem('website') as HTMLInputElement).value;
+
       if (honeypot) {
-        console.info('Spam detected — honeypot field was filled.');
-        statusDiv.textContent = 'Thank you! We\'ll be in touch.';
-        statusDiv.className = 'form-status form-status--success';
-        statusDiv.style.display = 'block';
-        form.style.display = 'none';
+        // Bot. Show the success path without writing anything.
+        form.hidden = true;
+        setStatus("Thank you — we'll be in touch.", 'success');
         return;
       }
 
-      // Disable button to prevent double-submit
+      if (!name || !email || !message) {
+        setStatus('Please fill in name, email, and a description.', 'error');
+        return;
+      }
+
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Sending...';
-      console.info('Form submission started');
+      submitBtn.textContent = 'Sending…';
 
       try {
         const { error } = await supabase
           .from('contact_submissions')
-          .insert({
-            name: (form.elements.namedItem('name') as HTMLInputElement).value,
-            email: (form.elements.namedItem('email') as HTMLInputElement).value,
-            message: (form.elements.namedItem('message') as HTMLTextAreaElement).value,
-          });
+          .insert({ name, email, message });
 
         if (error) {
-          console.error('Supabase Error:', error.message, '| Code:', error.code);
-          if (error.code === '42501') console.error('This is likely an RLS policy issue (403).');
-          if (error.code === '404') console.error('Check if PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY are correct.');
-
-          statusDiv.textContent = 'Something went wrong. Please email admin@milabiz.com directly.';
-          statusDiv.className = 'form-status form-status--error';
-          statusDiv.style.display = 'block';
+          console.error('[contact] insert failed:', error.code);
+          setStatus(
+            'Something went wrong sending that. Please email admin@milabiz.com directly.',
+            'error'
+          );
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Send Message';
-        } else {
-          console.info('Form submission successful');
-          statusDiv.textContent = 'Thank you! We\'ll get back to you soon.';
-          statusDiv.className = 'form-status form-status--success';
-          statusDiv.style.display = 'block';
-          form.style.display = 'none';
+          submitBtn.textContent = 'Send message';
+          return;
         }
+
+        form.hidden = true;
+        setStatus("Thank you — we'll get back to you shortly.", 'success');
       } catch (err) {
-        console.error('Network error during form submission:', err);
-        statusDiv.textContent = 'Network error. Please check your connection and try again, or email admin@milabiz.com.';
-        statusDiv.className = 'form-status form-status--error';
-        statusDiv.style.display = 'block';
+        console.error('[contact] network error:', err);
+        setStatus(
+          'Network error. Check your connection and try again, or email admin@milabiz.com.',
+          'error'
+        );
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Send Message';
+        submitBtn.textContent = 'Send message';
       }
     });
-  });
+  }
+
+  initContactForm();
+  document.addEventListener('astro:page-load', initContactForm);
 </script>

@@ -1,0 +1,37 @@
+---
+interface Props {
+  title?: string;
+  /** Adds hover lift. Use for cards that are links or contain a primary action. */
+  interactive?: boolean;
+  /** Renders the whole card as an anchor. */
+  href?: string;
+  id?: string;
+  class?: string;
+}
+
+const {
+  title,
+  interactive = false,
+  href,
+  id,
+  class: className = '',
+} = Astro.props;
+
+const Tag = href ? 'a' : 'div';
+---
+
+<Tag
+  id={id}
+  href={href}
+  class:list={[
+    'card',
+    (interactive || href) && 'card--interactive',
+    className,
+  ]}
+  style={href ? 'text-decoration:none; color:inherit; display:block;' : undefined}
+>
+  {title && <h3 class="card__title">{title}</h3>}
+  <div class="card__body">
+    <slot />
+  </div>
+</Tag>

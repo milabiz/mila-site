@@ -1,0 +1,53 @@
+---
+interface Props {
+  code: string;
+  label?: string;
+  /** Show a copy-to-clipboard button. */
+  copy?: boolean;
+  class?: string;
+}
+
+const { code, label, copy = true, class: className = '' } = Astro.props;
+const hasHead = Boolean(label) || copy;
+---
+
+<div class:list={['code', className]}>
+  {
+    hasHead && (
+      <div class="code__head">
+        <span class="code__label">{label ?? 'SQL'}</span>
+        {copy && (
+          <button type="button" class="code__copy" data-copy>
+            Copy
+          </button>
+        )}
+      </div>
+    )
+  }
+  {/* Interpolation escapes by design — this may render model output.
+      tabindex so the horizontally-scrollable region is keyboard reachable. */}
+  <pre tabindex="0"><code>{code}</code></pre>
+</div>
+
+<script>
+  // Delegated so it covers blocks rendered after load (e.g. review results).
+  document.addEventListener('click', async (event) => {
+    const target = event.target as HTMLElement | null;
+    const button = target?.closest<HTMLButtonElement>('[data-copy]');
+    if (!button) return;
+
+    const text = button.closest('.code')?.querySelector('code')?.textContent;
+    if (!text) return;
+
+    const original = button.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = 'Copied';
+    } catch {
+      button.textContent = 'Press Ctrl+C';
+    }
+    window.setTimeout(() => {
+      button.textContent = original;
+    }, 1600);
+  });
+</script>

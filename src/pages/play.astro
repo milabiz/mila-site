@@ -1,0 +1,45 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Section from '../components/Section.astro';
+import UptimeDefender from '../components/UptimeDefender.astro';
+---
+
+<BaseLayout
+  title="Uptime Defender — Mila Business Solutions LLC"
+  description="A small arcade game. You're the firewall: catch data packets, dodge fireballs, keep the shield up."
+>
+  <Section narrow>
+    <div class="reveal">
+      <p class="eyebrow">Coffee break</p>
+      <h1 style="margin-top:var(--space-3);">Uptime Defender</h1>
+      <p class="lead" style="margin-top:var(--space-4);">
+        You're the firewall. Catch the data packets, dodge the fireballs, and
+        keep the shield up as things speed up.
+      </p>
+    </div>
+  </Section>
+
+  <Section narrow tight>
+    <UptimeDefender />
+  </Section>
+
+  <Section sunken narrow title="Why is this here?">
+    <p>
+      Mostly because it was fun to build. But it's also a small, honest
+      demonstration: it runs at a steady frame rate on a phone, it works with a
+      keyboard or a mouse or a thumb, it pauses itself when you scroll away
+      rather than quietly draining your battery, and if you have reduced-motion
+      turned on it drops the screen shake and particle effects instead of
+      ignoring you.
+    </p>
+    <p>
+      None of that is visible when it's working. That's rather the point &mdash;
+      it's the same care that decides whether a data pipeline still runs
+      correctly at 3am in month eleven.
+    </p>
+    <p style="margin-top:var(--space-6);">
+      <a href="/demo/">Try the SQL review &rarr;</a> &nbsp;·&nbsp;
+      <a href="/contact/">Talk to us about real work &rarr;</a>
+    </p>
+  </Section>
+</BaseLayout>
