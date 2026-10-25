@@ -12,6 +12,57 @@ const {
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const site = String(Astro.site ?? 'https://milabiz.com/').replace(/\/$/, '');
+
+/**
+ * Structured data for search engines and AI answer engines. A data block,
+ * not a script, so the CSP's script-src does not apply to it.
+ */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'ProfessionalService',
+      '@id': `${site}/#org`,
+      name: 'Mila Business Solutions LLC',
+      url: `${site}/`,
+      logo: `${site}/logo.svg`,
+      image: `${site}/default-og.png`,
+      email: 'admin@milabiz.com',
+      description:
+        'AI automation and data engineering for small and mid-sized businesses: scheduled agents, document extraction, SQL Server performance work, and systems integration.',
+      areaServed: 'US',
+      knowsAbout: [
+        'AI automation',
+        'AI agents',
+        'Document data extraction',
+        'SQL Server performance tuning',
+        'Data engineering',
+        'Systems integration',
+      ],
+      hasOfferCatalog: {
+        '@type': 'OfferCatalog',
+        name: 'Services',
+        itemListElement: [
+          ['AI Automation & Agents', 'Workflows and scheduled agents that do recurring work without a person driving them.'],
+          ['AI on Your Own Data', 'Making information you already own queryable, instead of buried in documents and transcripts.'],
+          ['Data Platform Engineering', 'Schema, queries, migrations, and reporting layers that hold up under real load.'],
+          ['Integration & Internal Tools', 'Connecting systems that were never designed to know about each other.'],
+        ].map(([name, description]) => ({
+          '@type': 'Offer',
+          itemOffered: { '@type': 'Service', name, description, provider: { '@id': `${site}/#org` } },
+        })),
+      },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${site}/#website`,
+      url: `${site}/`,
+      name: 'Mila Business Solutions',
+      publisher: { '@id': `${site}/#org` },
+    },
+  ],
+};
 ---
 
 <meta charset="UTF-8" />
@@ -32,3 +83,5 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={new URL(image, Astro.site)} />
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)}></script>

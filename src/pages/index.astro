@@ -4,6 +4,7 @@ import Section from '../components/Section.astro';
 import Card from '../components/Card.astro';
 import ProblemChooser from '../components/ProblemChooser.astro';
 import Vignette from '../components/Vignette.astro';
+import ExperiencePicker from '../components/ExperiencePicker.astro';
 
 const chooserOptions = [
   {
@@ -34,7 +35,10 @@ const chooserOptions = [
 ];
 ---
 
-<BaseLayout title="Mila Business Solutions LLC — AI automation on solid data foundations">
+<BaseLayout
+  title="Mila Business Solutions LLC — AI automation on solid data foundations"
+  description="Mila Business Solutions builds AI automation, document extraction, and SQL Server data engineering for small and mid-sized businesses — systems that run unattended on data you can trust."
+>
   <!-- Hero -->
   <section class="hero">
     <div class="container hero__inner">
@@ -63,6 +67,17 @@ const chooserOptions = [
       </p>
     </div>
   </section>
+
+  <!-- Experience chooser: same content, different look -->
+  <Section
+    id="experience"
+    tight
+    eyebrow="Make it yours"
+    title="Choose your experience"
+    lead="Same site, five personalities. Pick one. It sticks as you browse, and you can switch any time from the header."
+  >
+    <ExperiencePicker variant="panel" />
+  </Section>
 
   <!-- Problem chooser -->
   <Section
