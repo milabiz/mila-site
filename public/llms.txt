@@ -3,7 +3,7 @@
 > AI automation built on solid data foundations. We help small and mid-sized businesses replace slow, manual, or unreliable work with AI agents, automated reporting, and well-engineered data platforms.
 
 ## Services
-- [Services](https://milabiz.com/services): AI Automation & Agents, AI on Your Own Data, Data Platform Engineering
+- [Services](https://milabiz.com/services): AI Automation & Agents, AI on Your Own Data, Data Platform Engineering, Integration & Internal Tools
 - [SQL Performance Review demo](https://milabiz.com/demo): paste a slow SQL query, get a plain-English review with index and rewrite suggestions
 
 ## About

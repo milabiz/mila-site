@@ -1,0 +1,68 @@
+---
+/**
+ * "Choose your experience" — re-skins the whole site. Two layouts share one
+ * set of buttons: `menu` (header popover) and `panel` (homepage grid).
+ * Clicks are handled once, by delegation, in BaseLayout; the choice is stored
+ * in localStorage and applied before first paint on later page loads.
+ */
+interface Props {
+  variant?: 'menu' | 'panel';
+}
+
+const { variant = 'menu' } = Astro.props;
+
+const experiences = [
+  { id: 'classic', name: 'Classic', glyph: 'Aa', desc: 'Clean and quiet. Follows your light/dark setting.' },
+  { id: 'terminal', name: 'Terminal', glyph: '>_', desc: 'Green-on-black, monospace, a blinking cursor.' },
+  { id: 'synthwave', name: 'Neon Synthwave', glyph: '☀', desc: 'Sunset, neon glow, a grid running to the horizon.' },
+  { id: 'blueprint', name: 'Blueprint', glyph: '⌖', desc: 'Drafting paper. How the foundations get drawn.' },
+  { id: 'editorial', name: 'Editorial', glyph: 'Ed', desc: 'Serif, calm, the short version for busy readers.' },
+] as const;
+---
+
+{
+  variant === 'menu' ? (
+    <>
+      <button
+        type="button"
+        class="exp-trigger"
+        popovertarget="exp-menu"
+        aria-label="Choose your experience"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-7.8-9-7.8z"></path>
+          <circle cx="7.5" cy="10.5" r="1"></circle>
+          <circle cx="12" cy="7.5" r="1"></circle>
+          <circle cx="16.5" cy="10.5" r="1"></circle>
+        </svg>
+        <span class="exp-trigger__label">Experience</span>
+      </button>
+      <div id="exp-menu" class="exp-menu" popover>
+        <p class="exp-menu__title">Choose your experience</p>
+        <div class="exp-options" role="group" aria-label="Site experience">
+          {experiences.map((e) => (
+            <button type="button" class="exp-option" data-exp-choice={e.id} aria-pressed="false">
+              <span class={`exp-swatch exp-swatch--${e.id}`} aria-hidden="true">{e.glyph}</span>
+              <span>
+                <span class="exp-option__name">{e.name}</span>
+                <span class="exp-option__desc">{e.desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  ) : (
+    <div class="exp-options exp-options--panel" role="group" aria-label="Site experience">
+      {experiences.map((e) => (
+        <button type="button" class="exp-option" data-exp-choice={e.id} aria-pressed="false">
+          <span class={`exp-swatch exp-swatch--${e.id}`} aria-hidden="true">{e.glyph}</span>
+          <span>
+            <span class="exp-option__name">{e.name}</span>
+            <span class="exp-option__desc">{e.desc}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}

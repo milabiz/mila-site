@@ -2,7 +2,9 @@
 import BaseHead from '../components/BaseHead.astro';
 import Nav from '../components/Nav.astro';
 import DevDebug from '../components/DevDebug.astro';
+import ExperiencePicker from '../components/ExperiencePicker.astro';
 import '../styles/global.css';
+import '../styles/experiences.css';
 
 interface Props {
   title: string;
@@ -29,6 +31,10 @@ const year = new Date().getFullYear();
           if (stored === 'light' || stored === 'dark') {
             document.documentElement.setAttribute('data-theme', stored);
           }
+          var exp = localStorage.getItem('experience');
+          if (/^(terminal|synthwave|blueprint|editorial)$/.test(exp || '')) {
+            document.documentElement.setAttribute('data-experience', exp);
+          }
         } catch (e) {
           /* private mode / storage disabled — fall back to prefers-color-scheme */
         }
@@ -37,6 +43,7 @@ const year = new Date().getFullYear();
   </head>
 
   <body>
+    <div class="exp-fx" aria-hidden="true"></div>
     <a class="skip-link" href="#main">Skip to content</a>
 
     <header class="site-header">
@@ -94,6 +101,8 @@ const year = new Date().getFullYear();
             </svg>
         </button>
 
+        <ExperiencePicker />
+
         <Nav />
       </div>
     </header>
@@ -141,6 +150,35 @@ const year = new Date().getFullYear();
         } catch (e) {
           /* storage unavailable — theme still applies for this page view */
         }
+      });
+
+      // Experience picker. One delegated handler serves the header menu and
+      // any inline panel; 'classic' is the absence of the attribute.
+      const root = document.documentElement;
+      function syncExperienceButtons() {
+        const current = root.getAttribute('data-experience') || 'classic';
+        document.querySelectorAll('[data-exp-choice]').forEach((b) => {
+          b.setAttribute(
+            'aria-pressed',
+            String(b.getAttribute('data-exp-choice') === current)
+          );
+        });
+      }
+      syncExperienceButtons();
+
+      document.addEventListener('click', (ev) => {
+        const btn = (ev.target as Element | null)?.closest('[data-exp-choice]');
+        if (!btn) return;
+        const choice = btn.getAttribute('data-exp-choice') || 'classic';
+        if (choice === 'classic') root.removeAttribute('data-experience');
+        else root.setAttribute('data-experience', choice);
+        try {
+          localStorage.setItem('experience', choice);
+        } catch (e) {
+          /* storage unavailable — applies for this page view only */
+        }
+        syncExperienceButtons();
+        document.getElementById('exp-menu')?.hidePopover?.();
       });
 
       // Markdown-generated code blocks scroll horizontally but come from the
